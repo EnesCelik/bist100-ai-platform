@@ -1,0 +1,13 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+*.sqlite
+*.sqlite3
+*.db
+*.log
+bist100_ai_platform.egg-info/

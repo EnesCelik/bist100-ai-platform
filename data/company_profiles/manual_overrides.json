@@ -1,0 +1,20 @@
+{
+  "ASTOR": {
+    "resolved_name": "Astor Enerji A.S.",
+    "resolved_sector": "Energy",
+    "raw_name": "Astor Enerji A.S.",
+    "raw_sector": "Energy",
+    "raw_industry": "Electrical Equipment / Energy Infrastructure",
+    "provider": "manual_override",
+    "updated_at": "2026-04-28T08:26:05.067205+00:00"
+  },
+  "MANAS": {
+    "resolved_name": "Manas Enerji Yonetimi Sanayi ve Ticaret A.S.",
+    "resolved_sector": "Energy",
+    "raw_name": "Manas Enerji Yonetimi Sanayi ve Ticaret A.S.",
+    "raw_sector": "Energy",
+    "raw_industry": "Energy Management / Metering",
+    "provider": "manual_override",
+    "updated_at": "2026-04-28T08:26:05.067205+00:00"
+  }
+}

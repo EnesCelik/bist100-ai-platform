@@ -1,0 +1,57 @@
+[
+  {
+    "ticker": "ASELS",
+    "headline": "Bolgesel guvenlik gundemi savunma hisselerine ilgiyi artiriyor",
+    "summary": "Guvenlik odakli harcama beklentileri savunma sirketlerinde siparis gorunurlugunu destekleyebilir.",
+    "source_url": "https://example.com/news/asels-defense-demand",
+    "publisher": "mock_news_feed",
+    "published_at": "2026-04-18",
+    "tags": [
+      "geopolitics",
+      "defense"
+    ],
+    "source": "json_news_store"
+  },
+  {
+    "ticker": "GARAN",
+    "headline": "Kuresel riskten kacinma bankacilik hisselerinde baski yaratabilir",
+    "summary": "Artan jeopolitik risk primi ve maliyet baskilari bankacilik hisselerinde dalgalanmaya neden olabilir.",
+    "source_url": "https://example.com/news/garan-risk-off",
+    "publisher": "mock_news_feed",
+    "published_at": "2026-04-18",
+    "tags": [
+      "geopolitics",
+      "banking",
+      "risk_off"
+    ],
+    "source": "json_news_store"
+  },
+  {
+    "ticker": "THYAO",
+    "headline": "Hurmuz Bogazi gerilimi hava yolu maliyet beklentilerini etkiliyor",
+    "summary": "Petrol ve lojistik risklerindeki artis havacilik sektorunde maliyet baskisi yaratabilir.",
+    "source_url": "https://example.com/news/thyao-hurmuz",
+    "publisher": "mock_news_feed",
+    "published_at": "2026-04-18",
+    "tags": [
+      "geopolitics",
+      "energy",
+      "aviation"
+    ],
+    "source": "json_news_store"
+  },
+  {
+    "ticker": "THYAO",
+    "headline": "Petrol lojistigi riski hava yolu maliyet beklentilerini yeniden gundeme tasidi",
+    "summary": "Bolgede artan gerilim enerji ve lojistik maliyetleri uzerinden havacilik hisselerinde baski yaratabilir.",
+    "source_url": "https://example.com/news/thyao-energy-risk-2",
+    "publisher": "manual_news_seed",
+    "published_at": "2026-04-19",
+    "tags": [
+      "geopolitics",
+      "energy",
+      "aviation"
+    ],
+    "source": "json_news_store"
+  }
+]

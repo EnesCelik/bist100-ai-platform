@@ -1,0 +1,42 @@
+[
+  {
+    "source_id": "marketaux",
+    "name": "Marketaux",
+    "category": "company_news",
+    "access_mode": "api",
+    "coverage": "Sirket bazli haber, sentiment ve entity tabanli finans haber akisi",
+    "notes": "BIST hisseleri icin sirket haberlerini izlemek ve sentiment cikarmak icin uygun ilk katman. Global makro olaylarda tek basina yeterli degil."
+  },
+  {
+    "source_id": "gdelt",
+    "name": "GDELT 2.0",
+    "category": "global_events",
+    "access_mode": "api",
+    "coverage": "Savas, yaptirim, diplomasi, enerji, lojistik ve ulke bazli olay akislarini genis kapsamla izler",
+    "notes": "Global event taramasi icin guclu aday. Ham veri yogundur; bizim tarafta filtreleme ve tema esleme gerekir."
+  },
+  {
+    "source_id": "event_registry",
+    "name": "Event Registry",
+    "category": "global_events",
+    "access_mode": "api",
+    "coverage": "Haber ve olay bazli konu/ulke/tema takibi",
+    "notes": "Global konu bazli event toplama icin daha yapili bir alternatif."
+  },
+  {
+    "source_id": "newsapi",
+    "name": "NewsAPI",
+    "category": "general_news",
+    "access_mode": "api",
+    "coverage": "Genel haber arama ve kaynak tarama",
+    "notes": "Global haber basliklarini toplamak icin faydali ama olay etkisi cikarmayi bizim yapmamiz gerekir."
+  },
+  {
+    "source_id": "manual_editor",
+    "name": "Manual Event Editor",
+    "category": "internal_ops",
+    "access_mode": "manual",
+    "coverage": "Dis API olmadan editor uzerinden global olay girisi",
+    "notes": "Bugun kullanabilecegimiz en hizli fallback. Global event -> sektor -> ticker akisini test etmek icin yeterli."
+  }
+]

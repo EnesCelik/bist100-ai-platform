@@ -1,0 +1,159 @@
+[
+  {
+    "ticker": "ASELS",
+    "latest_macro_event": "Bolgesel guvenlik risklerinin artisi",
+    "positive_impacts": [
+      "Savunma harcamalarina ilgi artisi sektor algisini destekleyebilir",
+      "Jeopolitik gerilim savunma sanayi talebini guclendirebilir"
+    ],
+    "negative_impacts": [
+      "Tedarik zinciri ve teslimat tarafinda uluslararasi baski olusabilir"
+    ],
+    "event_category": "geopolitics",
+    "region": "middle_east",
+    "published_at": "2026-04-16",
+    "source": "json_macro_event_store"
+  },
+  {
+    "ticker": "ASELS",
+    "latest_macro_event": "Hurmuz Bogazi gerilimi ve petrol lojistigi riski",
+    "positive_impacts": [
+      "Kuresel guvenlik gundemi risk algisini degistirebilir"
+    ],
+    "negative_impacts": [
+      "Enerji ve lojistik maliyetleri yukselebilir"
+    ],
+    "event_category": "geopolitics",
+    "region": "middle_east",
+    "published_at": "2026-04-17",
+    "source": "json_macro_event_store"
+  },
+  {
+    "ticker": "ASELS",
+    "latest_macro_event": "Hurmuz Bogazi gerilimi ve petrol lojistigi riski",
+    "positive_impacts": [
+      "Kuresel guvenlik gundemi risk algisini degistirebilir"
+    ],
+    "negative_impacts": [
+      "Enerji ve lojistik maliyetleri yukselebilir"
+    ],
+    "event_category": "geopolitics",
+    "region": "middle_east",
+    "published_at": "2026-04-18",
+    "source": "json_macro_event_store"
+  },
+  {
+    "ticker": "EREGL",
+    "latest_macro_event": "Aluminyum ve metal ticaretinde arz daralmasi",
+    "positive_impacts": [
+      "Metal arz daralmasi sektor fiyatlama gucunu destekleyebilir"
+    ],
+    "negative_impacts": [
+      "Girdi maliyetlerinde oynaklik artabilir"
+    ],
+    "event_category": "trade",
+    "region": "global",
+    "published_at": "2026-04-16",
+    "source": "json_macro_event_store"
+  },
+  {
+    "ticker": "GARAN",
+    "latest_macro_event": "Kuresel faiz ve regulasyon baskisi tartismalari",
+    "positive_impacts": [
+      "Guclu fonlama yapisi volatil donemlerde goreli dayaniklilik saglayabilir"
+    ],
+    "negative_impacts": [
+      "Jeopolitik gerilim ve faiz oynakligi bankacilik risk algisini bozabilir",
+      "Regulasyon baskisi sektor carpani uzerinde baski yaratabilir"
+    ],
+    "event_category": "rates",
+    "region": "global",
+    "published_at": "2026-04-16",
+    "source": "json_macro_event_store"
+  },
+  {
+    "ticker": "GARAN",
+    "latest_macro_event": "Hurmuz Bogazi gerilimi ve petrol lojistigi riski",
+    "positive_impacts": [
+      "Kuresel guvenlik gundemi risk algisini degistirebilir"
+    ],
+    "negative_impacts": [
+      "Enerji ve lojistik maliyetleri yukselebilir"
+    ],
+    "event_category": "geopolitics",
+    "region": "middle_east",
+    "published_at": "2026-04-17",
+    "source": "json_macro_event_store"
+  },
+  {
+    "ticker": "GARAN",
+    "latest_macro_event": "Hurmuz Bogazi gerilimi ve petrol lojistigi riski",
+    "positive_impacts": [
+      "Kuresel guvenlik gundemi risk algisini degistirebilir"
+    ],
+    "negative_impacts": [
+      "Enerji ve lojistik maliyetleri yukselebilir"
+    ],
+    "event_category": "geopolitics",
+    "region": "middle_east",
+    "published_at": "2026-04-18",
+    "source": "json_macro_event_store"
+  },
+  {
+    "ticker": "THYAO",
+    "latest_macro_event": "Brent petrol fiyatlarinda jeopolitik gerilim kaynakli yukselis",
+    "positive_impacts": [
+      "Dis talep guclu kalirsa gelir tarafinda destek korunabilir"
+    ],
+    "negative_impacts": [
+      "Petrol fiyatlarindaki yukselis yakit maliyetlerini artirabilir",
+      "Jeopolitik gerilim dis hat operasyonlarini baskilayabilir"
+    ],
+    "event_category": "energy",
+    "region": "middle_east",
+    "published_at": "2026-04-16",
+    "source": "json_macro_event_store"
+  },
+  {
+    "ticker": "THYAO",
+    "latest_macro_event": "Hurmuz Bogazi gerilimi ve petrol lojistigi riski",
+    "positive_impacts": [
+      "Kuresel guvenlik gundemi risk algisini degistirebilir"
+    ],
+    "negative_impacts": [
+      "Enerji ve lojistik maliyetleri yukselebilir"
+    ],
+    "event_category": "geopolitics",
+    "region": "middle_east",
+    "published_at": "2026-04-17",
+    "source": "json_macro_event_store"
+  },
+  {
+    "ticker": "THYAO",
+    "latest_macro_event": "Hurmuz Bogazi gerilimi ve petrol lojistigi riski",
+    "positive_impacts": [
+      "Kuresel guvenlik gundemi risk algisini degistirebilir"
+    ],
+    "negative_impacts": [
+      "Enerji ve lojistik maliyetleri yukselebilir"
+    ],
+    "event_category": "geopolitics",
+    "region": "middle_east",
+    "published_at": "2026-04-18",
+    "source": "json_macro_event_store"
+  },
+  {
+    "ticker": "THYAO",
+    "latest_macro_event": "Petrol lojistigi riski hava yolu maliyet beklentilerini yeniden gundeme tasidi",
+    "positive_impacts": [
+      "Enerji fiyat hareketleri sektorler arasi ayrismayi artirabilir"
+    ],
+    "negative_impacts": [
+      "Enerji ve lojistik maliyetleri yukselebilir"
+    ],
+    "event_category": "energy",
+    "region": "global",
+    "published_at": "2026-04-19",
+    "source": "news_to_macro_converter"
+  }
+]

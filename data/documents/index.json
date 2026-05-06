@@ -1,0 +1,37 @@
+[
+  {
+    "ticker": "GARAN",
+    "document_title": "Garanti BBVA 2025 Faaliyet Raporu",
+    "document_type": "activity_report",
+    "published_at": "2026-02-20",
+    "file_path": "garan_2025_activity_report.md"
+  },
+  {
+    "ticker": "GARAN",
+    "document_title": "KAP Aciklamasi - Sendikasyon Gelismesi",
+    "document_type": "kap",
+    "published_at": "2026-03-11",
+    "file_path": "garan_kap_sendikasyon.md"
+  },
+  {
+    "ticker": "ASELS",
+    "document_title": "Aselsan 2025 Faaliyet Raporu",
+    "document_type": "activity_report",
+    "published_at": "2026-02-28",
+    "file_path": "asels_2025_activity_report.md"
+  },
+  {
+    "ticker": "THYAO",
+    "document_title": "THY 2025 Faaliyet Raporu",
+    "document_type": "activity_report",
+    "published_at": "2026-02-25",
+    "file_path": "thyao_2025_activity_report.md"
+  },
+  {
+    "ticker": "GARAN",
+    "document_title": "KAP Aciklamasi - Dijital Bankacilik Yatirimi",
+    "document_type": "kap",
+    "published_at": "2026-04-16",
+    "file_path": "garan_kap_aciklamasi_dijital_bankacilik_yatirimi.md"
+  }
+]

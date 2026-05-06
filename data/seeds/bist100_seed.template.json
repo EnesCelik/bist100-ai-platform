@@ -1,0 +1,35 @@
+{
+  "universe_code": "bist100",
+  "universe_name": "BIST 100",
+  "source": "manual_bist100_seed_template",
+  "items": [
+    {
+      "ticker": "AKBNK",
+      "name": "Akbank",
+      "sector": "Banking",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ASELS",
+      "name": "Aselsan",
+      "sector": "Defense",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "GARAN",
+      "name": "Garanti BBVA",
+      "sector": "Banking",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "THYAO",
+      "name": "Turkish Airlines",
+      "sector": "Airlines",
+      "signal_enabled": false,
+      "is_active": true
+    }
+  ]
+}

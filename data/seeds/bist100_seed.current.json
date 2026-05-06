@@ -1,0 +1,602 @@
+{
+  "universe_code": "bist100",
+  "universe_name": "BIST 100",
+  "source": "public_components_curated_2026_04_22",
+  "items": [
+    {
+      "ticker": "AEFES",
+      "name": "Anadolu Efes",
+      "sector": "Consumer",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "AGHOL",
+      "name": "Anadolu Grubu Holding",
+      "sector": "Conglomerates",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "AKBNK",
+      "name": "Akbank",
+      "sector": "Banking",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "AKENR",
+      "name": "Akenerji",
+      "sector": "Utilities",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "AKGRT",
+      "name": "Aksigorta",
+      "sector": "Insurance",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "AKSA",
+      "name": "Aksa Akrilik",
+      "sector": "Chemicals",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "AKSEN",
+      "name": "Aksa Enerji",
+      "sector": "Utilities",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ALARK",
+      "name": "Alarko Holding",
+      "sector": "Industrials",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ANSGR",
+      "name": "Anadolu Sigorta",
+      "sector": "Insurance",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ARCLK",
+      "name": "Arcelik",
+      "sector": "Consumer Durables",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ASELS",
+      "name": "Aselsan",
+      "sector": "Defense",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ASTOR",
+      "name": "Astor Enerji",
+      "sector": "Electronics",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "AYGAZ",
+      "name": "Aygaz",
+      "sector": "Energy",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "BIMAS",
+      "name": "BIM Birlesik Magazalar",
+      "sector": "Retail",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "BJKAS",
+      "name": "Besiktas Futbol Yat.",
+      "sector": "Sports",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "BRISA",
+      "name": "Brisa",
+      "sector": "Automotive",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "BRSAN",
+      "name": "Borusan Mannesmann",
+      "sector": "Industrials",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "CANTE",
+      "name": "Can2 Termik",
+      "sector": "Energy",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "CCOLA",
+      "name": "Coca-Cola Icecek",
+      "sector": "Consumer",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "CIMSA",
+      "name": "Cimsa",
+      "sector": "Materials",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "DEVA",
+      "name": "Deva Holding",
+      "sector": "Healthcare",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "DOAS",
+      "name": "Dogus Otomotiv",
+      "sector": "Automotive",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "DOHOL",
+      "name": "Dogan Holding",
+      "sector": "Conglomerates",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "EKGYO",
+      "name": "Emlak Konut GYO",
+      "sector": "Real Estate",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ENJSA",
+      "name": "Enerjisa Enerji",
+      "sector": "Utilities",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ENKAI",
+      "name": "Enka Insaat",
+      "sector": "Industrials",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "EREGL",
+      "name": "Eregli Demir Celik",
+      "sector": "Steel",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "FROTO",
+      "name": "Ford Otosan",
+      "sector": "Automotive",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "GARAN",
+      "name": "Garanti BBVA",
+      "sector": "Banking",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "GENIL",
+      "name": "Gen Ilac",
+      "sector": "Healthcare",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "GESAN",
+      "name": "Girisim Elektrik",
+      "sector": "Industrials",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "GLYHO",
+      "name": "Global Yatirim Holding",
+      "sector": "Holding",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "GOZDE",
+      "name": "Gozde Girisim",
+      "sector": "Investment",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "GUBRF",
+      "name": "Gubre Fabrikalari",
+      "sector": "Materials",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "HALKB",
+      "name": "Halkbank",
+      "sector": "Banking",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "HEKTS",
+      "name": "Hektas",
+      "sector": "Chemicals",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ICBCT",
+      "name": "ICBC Turkey Bank",
+      "sector": "Banking",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "IPEKE",
+      "name": "Ipek Dogal Enerji",
+      "sector": "Mining",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ISCTR",
+      "name": "Is Bankasi C",
+      "sector": "Banking",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ISFIN",
+      "name": "Is Finansal Kiralama",
+      "sector": "Financial Services",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ISGYO",
+      "name": "Is GYO",
+      "sector": "Real Estate",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "IZMDC",
+      "name": "Izmir Demir Celik",
+      "sector": "Steel",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "KARSN",
+      "name": "Karsan",
+      "sector": "Automotive",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "KCHOL",
+      "name": "Koc Holding",
+      "sector": "Conglomerates",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "KLGYO",
+      "name": "Kiler GYO",
+      "sector": "Real Estate",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "KONTR",
+      "name": "Kontrolmatik",
+      "sector": "Technology",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "KOZAA",
+      "name": "Koza Anadolu Metal",
+      "sector": "Mining",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "KOZAL",
+      "name": "Koza Altin",
+      "sector": "Mining",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "KRDMD",
+      "name": "Kardemir D",
+      "sector": "Steel",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "MAGEN",
+      "name": "Margun Enerji",
+      "sector": "Utilities",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "MANAS",
+      "name": "Manas Enerji Yonetimi",
+      "sector": "Technology",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "MGROS",
+      "name": "Migros",
+      "sector": "Retail",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "MIATK",
+      "name": "Mia Teknoloji",
+      "sector": "Technology",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "MPARK",
+      "name": "MLP Saglik",
+      "sector": "Healthcare",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "NTHOL",
+      "name": "Net Holding",
+      "sector": "Holding",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "OTKAR",
+      "name": "Otokar",
+      "sector": "Defense",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "PETKM",
+      "name": "Petkim",
+      "sector": "Chemicals",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "PGSUS",
+      "name": "Pegasus",
+      "sector": "Airlines",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "PSGYO",
+      "name": "Pasifik GYO",
+      "sector": "Real Estate",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "QUAGR",
+      "name": "Qua Granite",
+      "sector": "Materials",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "SAHOL",
+      "name": "Sabanci Holding",
+      "sector": "Conglomerates",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "SASA",
+      "name": "SASA Polyester",
+      "sector": "Chemicals",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "SISE",
+      "name": "Sisecam",
+      "sector": "Materials",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "SKBNK",
+      "name": "Sekerbank",
+      "sector": "Banking",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "SNGYO",
+      "name": "Sinpas GYO",
+      "sector": "Real Estate",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "SOKM",
+      "name": "Sok Marketler",
+      "sector": "Retail",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "TAVHL",
+      "name": "TAV Havalimanlari",
+      "sector": "Airports",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "TCELL",
+      "name": "Turkcell",
+      "sector": "Telecom",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "THYAO",
+      "name": "Turkish Airlines",
+      "sector": "Airlines",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "TKFEN",
+      "name": "Tekfen Holding",
+      "sector": "Industrials",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "TOASO",
+      "name": "Tofas",
+      "sector": "Automotive",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "TRCAS",
+      "name": "Turcas Petrol",
+      "sector": "Energy",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "TRGYO",
+      "name": "Torunlar GYO",
+      "sector": "Real Estate",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "TSKB",
+      "name": "TSKB",
+      "sector": "Banking",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "TSPOR",
+      "name": "Trabzonspor Sportif",
+      "sector": "Sports",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "TTKOM",
+      "name": "Turk Telekom",
+      "sector": "Telecom",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "TTRAK",
+      "name": "Turk Traktor",
+      "sector": "Machinery",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "TUKAS",
+      "name": "Tukas",
+      "sector": "Food",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "TUPRS",
+      "name": "Tupras",
+      "sector": "Energy",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "TURSG",
+      "name": "Turkiye Sigorta",
+      "sector": "Insurance",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ULKER",
+      "name": "Ulker Biskuvi",
+      "sector": "Food",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "VAKBN",
+      "name": "Vakifbank",
+      "sector": "Banking",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "VESTL",
+      "name": "Vestel",
+      "sector": "Electronics",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "YKBNK",
+      "name": "Yapi Kredi",
+      "sector": "Banking",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ZOREN",
+      "name": "Zorlu Enerji",
+      "sector": "Utilities",
+      "signal_enabled": false,
+      "is_active": true
+    }
+  ]
+}
