@@ -84,9 +84,12 @@ def save_ohlcv_response(response: OHLCVResponse) -> None:
     ensure_runtime_schema()
     normalized_ticker = response.ticker.upper()
     normalized_timeframe = response.timeframe.upper()
+    candles_by_timestamp = {
+        _parse_iso(candle.timestamp): candle
+        for candle in response.candles
+    }
     with SessionLocal() as session:
-        for candle in response.candles:
-            ts = _parse_iso(candle.timestamp)
+        for ts, candle in candles_by_timestamp.items():
             statement = select(OHLCVBarCache).where(
                 OHLCVBarCache.ticker == normalized_ticker,
                 OHLCVBarCache.timeframe == normalized_timeframe,

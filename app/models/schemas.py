@@ -307,6 +307,37 @@ class MarketScanResponse(BaseModel):
     items: list[MarketScanItem] = Field(description="Ranked market scan items")
 
 
+class LimitUpCandidateItem(BaseModel):
+    ticker: str = Field(description="BIST ticker code", examples=["PETKM"])
+    company_name: str = Field(description="Company name")
+    sector: str = Field(description="Sector name")
+    limit_up_score: float = Field(description="0-100 limit-up candidate score", examples=[76.5])
+    probability_bucket: str = Field(description="Qualitative probability bucket", examples=["high"])
+    last_price: float | None = Field(default=None, description="Latest traded price")
+    change_percent: float | None = Field(default=None, description="Daily percentage change")
+    distance_to_limit_percent: float | None = Field(default=None, description="Approximate remaining distance to +10% limit")
+    volume: int | None = Field(default=None, description="Daily traded volume")
+    daily_volume_ratio: float | None = Field(default=None, description="Current volume divided by 20-day average volume")
+    intraday_volume_ratio_1h: float | None = Field(default=None, description="1H current volume divided by 1H average volume")
+    technical_bias: str | None = Field(default=None, description="Daily technical bias")
+    intraday_bias_1h: str | None = Field(default=None, description="1H technical bias")
+    breakout_state_1h: str | None = Field(default=None, description="1H breakout state")
+    spread_percent: float | None = Field(default=None, description="Best ask/bid spread percentage when available")
+    order_flow_proxy: str = Field(description="Order-flow proxy derived from best bid/ask and spread", examples=["healthy_spread"])
+    entry_trigger: float | None = Field(default=None, description="Level that confirms upside continuation")
+    invalidation_level: float | None = Field(default=None, description="Level that weakens the setup")
+    reasons: list[str] = Field(description="Positive reasons for the limit-up candidate ranking")
+    risks: list[str] = Field(description="Risks or invalidation notes")
+
+
+class LimitUpCandidateResponse(BaseModel):
+    generated_at: str = Field(description="Scan generation timestamp", examples=["2026-05-12T12:00:00"])
+    universe_size: int = Field(description="Number of companies scanned", examples=[85])
+    total: int = Field(description="Number of returned candidates", examples=[10])
+    excluded_already_limit_count: int = Field(description="Number of symbols excluded because they were already near limit-up")
+    items: list[LimitUpCandidateItem] = Field(description="Ranked limit-up candidate items")
+
+
 class AskRequest(BaseModel):
     question: str = Field(
         description="User question for the assistant",

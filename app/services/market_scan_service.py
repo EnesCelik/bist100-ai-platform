@@ -8,6 +8,8 @@ from app.db.models import ScanSnapshot
 from app.db.session import SessionLocal, ensure_runtime_schema
 from app.models.schemas import (
     AnalysisEvidence,
+    LimitUpCandidateItem,
+    LimitUpCandidateResponse,
     MarketScanItem,
     MarketScanResponse,
     ScanSnapshotCreateResponse,
@@ -62,6 +64,38 @@ def _build_news_impact_summary(evidence_items: list[AnalysisEvidence]) -> str | 
         return "negatif haber akisi"
     return "karisik haber akisi"
 
+
+
+def _clamp(value: float, low: float, high: float) -> float:
+    return max(low, min(high, value))
+
+
+def _probability_bucket(score: float) -> str:
+    if score >= 72:
+        return "high"
+    if score >= 58:
+        return "medium"
+    return "watch"
+
+
+def _spread_percent(best_bid: float, best_ask: float) -> float | None:
+    if best_bid <= 0 or best_ask <= 0:
+        return None
+    midpoint = (best_bid + best_ask) / 2
+    if midpoint <= 0:
+        return None
+    return round(((best_ask - best_bid) / midpoint) * 100, 3)
+
+
+def _order_flow_proxy(best_bid: float, best_ask: float) -> str:
+    spread = _spread_percent(best_bid, best_ask)
+    if spread is None:
+        return "depth_missing"
+    if spread <= 0.12:
+        return "healthy_spread"
+    if spread <= 0.35:
+        return "wide_but_tradeable"
+    return "wide_spread"
 
 
 def _summarize_market_data_sources(items: list[MarketScanItem]) -> dict[str, int]:
@@ -124,6 +158,177 @@ def _trade_calibration_rank_component(trade_calibration) -> float:
             component -= 0.2
     return round(component, 3)
 
+
+
+def _change_runway_component(change_percent: float | None) -> tuple[float, list[str], list[str]]:
+    reasons: list[str] = []
+    risks: list[str] = []
+    if change_percent is None:
+        return 0.0, reasons, ["Gunluk degisim okunamadi"]
+
+    if change_percent >= 9.3:
+        return -100.0, reasons, ["Hisse zaten tavan bolgesine cok yakin"]
+    if 3.0 <= change_percent <= 7.2:
+        reasons.append("Gun ici yuzde artisi tavan kosusu icin ideal ivme bandinda")
+        return 21.0, reasons, risks
+    if 1.0 <= change_percent < 3.0:
+        reasons.append("Pozitif ama henuz doymamis gun ici ivme var")
+        return 14.0, reasons, risks
+    if 7.2 < change_percent < 9.3:
+        reasons.append("Tavana yakin momentum var")
+        risks.append("Yuksek yuzde nedeniyle kovalamaca riski artiyor")
+        return 11.0, reasons, risks
+    if -1.0 <= change_percent < 1.0:
+        reasons.append("Gunun geri kalani icin hala hareket alani var")
+        return 5.0, reasons, risks
+    risks.append("Gun ici performans tavan kosusu icin henuz zayif")
+    return -4.0, reasons, risks
+
+
+def _volume_pressure_component(market_snapshot, daily_chart, intraday_1h) -> tuple[float, float | None, float | None, list[str], list[str]]:
+    reasons: list[str] = []
+    risks: list[str] = []
+    daily_ratio = None
+    intraday_ratio = None
+    score = 0.0
+
+    if market_snapshot is not None and daily_chart is not None and daily_chart.avg_volume > 0:
+        daily_ratio = round(market_snapshot.volume / max(daily_chart.avg_volume, 1), 2)
+        if daily_ratio >= 2.0:
+            score += 20.0
+            reasons.append("Gunluk hacim ortalamanin cok uzerinde")
+        elif daily_ratio >= 1.35:
+            score += 13.0
+            reasons.append("Gunluk hacim ortalamanin belirgin uzerinde")
+        elif daily_ratio >= 1.0:
+            score += 7.0
+            reasons.append("Gunluk hacim ortalama ustunde")
+        elif daily_ratio < 0.75:
+            score -= 8.0
+            risks.append("Gunluk hacim teyidi zayif")
+
+    if intraday_1h is not None:
+        intraday_ratio = round(float(intraday_1h.volume_ratio), 2)
+        if intraday_ratio >= 1.6:
+            score += 15.0
+            reasons.append("1H hacim ivmesi guclu")
+        elif intraday_ratio >= 1.15:
+            score += 8.0
+            reasons.append("1H hacim ortalamanin uzerinde")
+        elif intraday_ratio < 0.75:
+            score -= 6.0
+            risks.append("1H hacim ivmesi zayif")
+
+    return score, daily_ratio, intraday_ratio, reasons, risks
+
+
+def _technical_pressure_component(daily_chart, intraday_1h, intraday_4h) -> tuple[float, list[str], list[str]]:
+    reasons: list[str] = []
+    risks: list[str] = []
+    score = 0.0
+
+    for label, chart, weight in (("gunluk", daily_chart, 1.0), ("1H", intraday_1h, 0.9), ("4H", intraday_4h, 0.75)):
+        if chart is None:
+            continue
+        if chart.signal_bias == "bullish":
+            score += 6.0 * weight
+            reasons.append(f"{label} teknik bias pozitif")
+        elif chart.signal_bias == "bearish":
+            score -= 7.0 * weight
+            risks.append(f"{label} teknik bias negatif")
+
+        if chart.structure_bias == "bullish":
+            score += 4.0 * weight
+        elif chart.structure_bias == "bearish":
+            score -= 4.0 * weight
+
+        if chart.breakout_state == "confirmed_breakout_up":
+            score += 11.0 * weight
+            reasons.append(f"{label} kirilim teyidi var")
+        elif chart.breakout_state == "breakout_watch_up":
+            score += 6.5 * weight
+            reasons.append(f"{label} yukari kirilim izleme bolgesinde")
+        elif chart.breakout_state in {"breakout_watch_down", "confirmed_breakout_down"}:
+            score -= 8.0 * weight
+            risks.append(f"{label} asagi kirilim riski var")
+
+    if daily_chart is not None:
+        if 52 <= daily_chart.rsi14 <= 69:
+            score += 6.0
+            reasons.append("RSI momentum bandinda, asiri isinmis degil")
+        elif daily_chart.rsi14 >= 78:
+            score -= 7.0
+            risks.append("Gunluk RSI asiri isinmis")
+        elif daily_chart.rsi14 < 42:
+            score -= 5.0
+            risks.append("Gunluk momentum zayif")
+
+    return score, reasons, risks
+
+
+def _liquidity_component(market_snapshot) -> tuple[float, float | None, str, list[str], list[str]]:
+    reasons: list[str] = []
+    risks: list[str] = []
+    if market_snapshot is None:
+        return -8.0, None, "snapshot_missing", reasons, ["Anlik fiyat verisi alinamadi"]
+
+    spread = _spread_percent(market_snapshot.best_bid, market_snapshot.best_ask)
+    proxy = _order_flow_proxy(market_snapshot.best_bid, market_snapshot.best_ask)
+    if proxy == "healthy_spread":
+        return 6.0, spread, proxy, ["Bid/ask spread saglikli"], risks
+    if proxy == "wide_but_tradeable":
+        return 1.0, spread, proxy, reasons, ["Spread genislemeye baslamis"]
+    if proxy == "wide_spread":
+        return -6.0, spread, proxy, reasons, ["Spread genis; emir kalitesi zayiflayabilir"]
+    return -2.0, spread, proxy, reasons, ["Derinlik verisi yok, emir akisi proxy ile sinirli"]
+
+
+def _build_limit_up_candidate(company) -> tuple[LimitUpCandidateItem | None, bool]:
+    market_snapshot = get_market_snapshot(company.ticker)
+    if market_snapshot is None:
+        return None, False
+
+    if market_snapshot.change_percent >= 9.3:
+        return None, True
+
+    daily_chart = get_chart_feature_summary(company.ticker, timeframe="1G")
+    intraday_1h = get_chart_feature_summary(company.ticker, timeframe="1H")
+    intraday_4h = get_chart_feature_summary(company.ticker, timeframe="4H")
+
+    change_score, change_reasons, change_risks = _change_runway_component(market_snapshot.change_percent)
+    volume_score, daily_volume_ratio, intraday_volume_ratio, volume_reasons, volume_risks = _volume_pressure_component(market_snapshot, daily_chart, intraday_1h)
+    technical_score, technical_reasons, technical_risks = _technical_pressure_component(daily_chart, intraday_1h, intraday_4h)
+    liquidity_score, spread, order_proxy, liquidity_reasons, liquidity_risks = _liquidity_component(market_snapshot)
+
+    score = _clamp(28.0 + change_score + volume_score + technical_score + liquidity_score, 0.0, 100.0)
+    if score < 42:
+        return None, False
+
+    reasons = list(dict.fromkeys(change_reasons + volume_reasons + technical_reasons + liquidity_reasons))[:5]
+    risks = list(dict.fromkeys(change_risks + volume_risks + technical_risks + liquidity_risks))[:5]
+
+    return LimitUpCandidateItem(
+        ticker=company.ticker,
+        company_name=company.name,
+        sector=company.sector,
+        limit_up_score=round(score, 2),
+        probability_bucket=_probability_bucket(score),
+        last_price=market_snapshot.last_price,
+        change_percent=market_snapshot.change_percent,
+        distance_to_limit_percent=round(max(0.0, 10.0 - market_snapshot.change_percent), 2),
+        volume=market_snapshot.volume,
+        daily_volume_ratio=daily_volume_ratio,
+        intraday_volume_ratio_1h=intraday_volume_ratio,
+        technical_bias=daily_chart.signal_bias if daily_chart is not None else None,
+        intraday_bias_1h=intraday_1h.signal_bias if intraday_1h is not None else None,
+        breakout_state_1h=intraday_1h.breakout_state if intraday_1h is not None else None,
+        spread_percent=spread,
+        order_flow_proxy=order_proxy,
+        entry_trigger=intraday_1h.breakout_buy_trigger if intraday_1h is not None else None,
+        invalidation_level=intraday_1h.breakdown_sell_trigger if intraday_1h is not None else None,
+        reasons=reasons,
+        risks=risks,
+    ), False
 
 
 def _intraday_breakout_component(chart_summary) -> float:
@@ -477,6 +682,42 @@ def scan_market(stance: str | None = None, limit: int = 20, ranking_mode: str = 
         generated_at=datetime.utcnow().isoformat(),
         universe_size=universe_size,
         total=len(limited_items),
+        items=limited_items,
+    )
+
+
+def scan_limit_up_candidates(limit: int = 15) -> LimitUpCandidateResponse:
+    companies = list_company_records(universe_code="bist100")
+    if not companies:
+        companies = list_company_records()
+
+    candidates: list[LimitUpCandidateItem] = []
+    excluded_already_limit_count = 0
+    for company in companies:
+        candidate, already_limit = _build_limit_up_candidate(company)
+        if already_limit:
+            excluded_already_limit_count += 1
+            continue
+        if candidate is not None:
+            candidates.append(candidate)
+
+    ranked = sorted(
+        candidates,
+        key=lambda item: (
+            item.limit_up_score,
+            item.change_percent or -999,
+            item.daily_volume_ratio or 0,
+            item.intraday_volume_ratio_1h or 0,
+            item.volume or 0,
+        ),
+        reverse=True,
+    )
+    limited_items = ranked[: max(limit, 1)]
+    return LimitUpCandidateResponse(
+        generated_at=datetime.utcnow().isoformat(),
+        universe_size=len(companies),
+        total=len(limited_items),
+        excluded_already_limit_count=excluded_already_limit_count,
         items=limited_items,
     )
 

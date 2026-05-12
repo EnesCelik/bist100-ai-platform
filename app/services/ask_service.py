@@ -146,10 +146,13 @@ def _is_generic_market_pick_question(question: str) -> bool:
         "hangi hisse alinabilir",
         "hangi hisseler one cikiyor",
         "alinabilecek hisseler",
+        "tavan ihtimali",
         "bugun hangi hisse tavan yapar",
         "hangi hisse tavan yapar",
         "tavan yapabilecek hisse",
+        "tavan yapma ihtimali",
         "tavan olabilir",
+        "tavana gidebilir",
         "en sert yukselebilecek hisse",
     ]
     return any(pattern in lowered for pattern in patterns)
@@ -219,9 +222,12 @@ def _is_today_sensitive_question(question: str) -> bool:
 def _is_limit_up_question(question: str) -> bool:
     lowered = _question_lower(question)
     markers = [
+        "tavan ihtimali",
         "tavan yapar",
         "tavan olabilir",
         "tavan yapabilecek",
+        "tavana gider",
+        "tavana gidebilir",
         "en sert yukselebilecek",
     ]
     return any(marker in lowered for marker in markers)
@@ -229,7 +235,47 @@ def _is_limit_up_question(question: str) -> bool:
 
 
 def _build_generic_market_pick_response(question: str) -> AskResponse:
-    from app.services.market_scan_service import scan_market
+    from app.services.market_scan_service import scan_limit_up_candidates, scan_market
+
+    if _is_limit_up_question(question):
+        limit_scan = scan_limit_up_candidates(limit=5)
+        if not limit_scan.items:
+            return AskResponse(
+                question=question,
+                route_type="analysis_query",
+                answer="Su an tavan aday taramasindan yeterince guclu aday cikmadi.",
+                used_sources=["limit_up_candidate_scan"],
+                confidence=0.35,
+                reasoning_summary="Tavan odakli soru icin ozel limit-up candidate taramasi calisti ancak esik ustu aday donmedi.",
+                recommendation=None,
+                analysis_evidence=[],
+                citations=[],
+            )
+        top = limit_scan.items[0]
+        alternates = ", ".join(f"{item.ticker} ({item.probability_bucket}, skor {item.limit_up_score})" for item in limit_scan.items[1:4])
+        reason_text = "; ".join(top.reasons[:3])
+        risk_text = "; ".join(top.risks[:2])
+        answer = (
+            f"Kesin tavan tahmini veremem; ama tavan odakli taramaya gore su an en guclu aday {top.ticker} ({top.company_name}). "
+            f"Limit-up skoru {top.limit_up_score}/100, kategori {top.probability_bucket}, son fiyat {top.last_price}, gunluk degisim %{top.change_percent}, tavana kalan yaklasik %{top.distance_to_limit_percent}. "
+            f"Tetik seviye {top.entry_trigger}, iptal seviyesi {top.invalidation_level}. "
+            f"Gerekce: {reason_text}."
+        )
+        if risk_text:
+            answer += f" Risk: {risk_text}."
+        if alternates:
+            answer += f" Alternatif adaylar: {alternates}."
+        return AskResponse(
+            question=question,
+            route_type="analysis_query",
+            answer=answer,
+            used_sources=["limit_up_candidate_scan", "matriks_market_data_tool", "chart_feature_signal_service"],
+            confidence=0.72 if top.probability_bucket == "high" else 0.62,
+            reasoning_summary="Tavan sorusu, gunluk yuzde ivmesi, hacim baskisi, 1H/4H teknik durum ve bid/ask spread proxy'si ile ozel limit-up candidate skoru kullanilarak yanitlandi.",
+            recommendation=None,
+            analysis_evidence=[],
+            citations=[],
+        )
 
     ranking_mode = "today" if _is_today_sensitive_question(question) else "default"
     scan = scan_market(limit=5, ranking_mode=ranking_mode)
@@ -248,20 +294,12 @@ def _build_generic_market_pick_response(question: str) -> AskResponse:
 
     top = scan.items[0]
     alternates = ", ".join(f"{item.ticker}" for item in scan.items[1:4])
-    if _is_limit_up_question(question):
-        answer = (
-            f"Kesin tavan tahmini veremem ama mevcut scan gorunume gore tavan potansiyeli en yuksek aday su an {top.ticker} ({top.company_name}) gorunuyor. "
-            f"Stance {top.stance}, aksiyon {top.action}, weighted score {top.weighted_score}, confidence {top.confidence}. "
-            f"Kisa gerekce: {top.summary}"
-        )
-        reasoning_summary = "Ticker belirtilmeden gelen tavan sorusu, kesin tahmin yerine gun ici momentum ve teknik tarama birlikte kullanilarak yanitlandi."
-    else:
-        answer = (
-            f"Su an mevcut market taramasina gore en guclu aday {top.ticker} ({top.company_name}) gorunuyor. "
-            f"Stance {top.stance}, aksiyon {top.action}, weighted score {top.weighted_score}, confidence {top.confidence}. "
-            f"Kisa gerekce: {top.summary}"
-        )
-        reasoning_summary = "Ticker belirtilmeden gelen genel alım sorusu, soru bugun/anlik baglami tasiyorsa gun ici momentum destekli scan ile yanitlandi."
+    answer = (
+        f"Su an mevcut market taramasina gore en guclu aday {top.ticker} ({top.company_name}) gorunuyor. "
+        f"Stance {top.stance}, aksiyon {top.action}, weighted score {top.weighted_score}, confidence {top.confidence}. "
+        f"Kisa gerekce: {top.summary}"
+    )
+    reasoning_summary = "Ticker belirtilmeden gelen genel alım sorusu, soru bugun/anlik baglami tasiyorsa gun ici momentum destekli scan ile yanitlandi."
     if alternates:
         answer += f" Alternatif olarak {alternates} de yakindan izlenebilir."
 
