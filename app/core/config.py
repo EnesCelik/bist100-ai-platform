@@ -53,6 +53,10 @@ class Settings(BaseSettings):
     scheduler_paper_log_stances: str = ""
     scheduler_paper_log_initial_delay_minutes: int = 5
     scheduler_paper_log_wait_for_prefetch: bool = True
+    scheduler_paper_trade_enabled: bool = False
+    scheduler_paper_trade_interval_minutes: int = 15
+    scheduler_paper_trade_open_limit: int = 5
+    scheduler_paper_trade_min_score: float = 70.0
 
     # Live Garanti / Matriks snapshot ayarlari.
     matriks_base_url: str = "https://api.matriksdata.com"

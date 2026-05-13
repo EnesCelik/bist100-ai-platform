@@ -23,6 +23,11 @@ class RuntimeHealthResponse(BaseModel):
     last_paper_log_completed_at: str | None = Field(default=None, description="Paper-log job last completion time")
     last_paper_log_status: str | None = Field(default=None, description="Paper-log job last status")
     last_paper_log_message: str | None = Field(default=None, description="Paper-log job last summary message")
+    paper_trade_enabled: bool = Field(default=False, description="Whether paper trade simulation scheduler is enabled")
+    last_paper_trade_started_at: str | None = Field(default=None, description="Paper-trade job last start time")
+    last_paper_trade_completed_at: str | None = Field(default=None, description="Paper-trade job last completion time")
+    last_paper_trade_status: str | None = Field(default=None, description="Paper-trade job last status")
+    last_paper_trade_message: str | None = Field(default=None, description="Paper-trade job last summary message")
 
 
 class DatabaseHealthResponse(BaseModel):
@@ -977,6 +982,85 @@ class PaperDecisionOutcomeHistoryResponse(BaseModel):
 class PaperDecisionLogHistoryResponse(BaseModel):
     total: int = Field(description="Number of returned paper decision logs", examples=[10])
     items: list[PaperDecisionLogItem] = Field(description="Paper decision history rows")
+
+
+class PaperTradeItem(BaseModel):
+    id: int = Field(description="Paper trade id", examples=[1])
+    ticker: str = Field(description="BIST ticker code", examples=["MGROS"])
+    company_name: str = Field(description="Company name")
+    sector: str = Field(description="Sector")
+    scenario: str = Field(description="Opportunity scenario", examples=["intraday_gain_candidate"])
+    status: str = Field(description="Trade status", examples=["open"])
+    outcome: str = Field(description="Trade outcome", examples=["open"])
+    opportunity_score: float = Field(description="Original opportunity score", examples=[78.4])
+    confidence: float = Field(description="Original opportunity confidence", examples=[0.72])
+    data_quality: str = Field(description="Source/freshness label", examples=["fresh_matriks"])
+    entry_price: float = Field(description="Paper entry price", examples=[100.0])
+    current_price: float = Field(description="Latest checked price", examples=[102.5])
+    max_seen_price: float = Field(description="Best seen price after entry", examples=[103.0])
+    min_seen_price: float = Field(description="Worst seen price after entry", examples=[98.8])
+    target_1_price: float = Field(description="+2 percent target price", examples=[102.0])
+    target_2_price: float = Field(description="+3 percent target price", examples=[103.0])
+    stop_price: float = Field(description="Stop/invalidation price", examples=[97.5])
+    close_price: float | None = Field(default=None, description="Final close price when finalized")
+    current_return_percent: float = Field(description="Current return from entry")
+    max_intraday_return_percent: float = Field(description="Best return seen from entry")
+    min_intraday_return_percent: float = Field(description="Worst return seen from entry")
+    hit_2_percent: bool = Field(description="Whether +2 percent target was touched")
+    hit_3_percent: bool = Field(description="Whether +3 percent target was touched")
+    hit_limit_up: bool = Field(description="Whether +10 percent from entry was touched")
+    stop_hit: bool = Field(description="Whether stop was touched")
+    why_now: list[str] = Field(description="Original opportunity reasons")
+    risks: list[str] = Field(description="Original opportunity risks")
+    opened_at: str | None = Field(default=None, description="Open timestamp")
+    last_checked_at: str | None = Field(default=None, description="Last monitor timestamp")
+    closed_at: str | None = Field(default=None, description="Close timestamp")
+
+
+class PaperTradeOpenResponse(BaseModel):
+    opened_count: int = Field(description="Number of newly opened paper trades", examples=[5])
+    skipped_count: int = Field(description="Number of scanned candidates skipped", examples=[2])
+    open_trade_count: int = Field(description="Total open paper trades after operation", examples=[5])
+    tickers: list[str] = Field(description="Newly opened tickers", examples=[["MGROS", "BIMAS"]])
+    items: list[PaperTradeItem] = Field(description="Newly opened trades")
+
+
+class PaperTradeMonitorResponse(BaseModel):
+    checked_count: int = Field(description="Number of open trades checked", examples=[5])
+    updated_count: int = Field(description="Number of open trades updated", examples=[5])
+    items: list[PaperTradeItem] = Field(description="Updated open trades")
+
+
+class PaperTradeFinalizeResponse(BaseModel):
+    finalized_count: int = Field(description="Number of trades finalized", examples=[5])
+    win_count: int = Field(description="Finalized trades marked win")
+    loss_count: int = Field(description="Finalized trades marked loss")
+    neutral_count: int = Field(description="Finalized trades marked neutral")
+    items: list[PaperTradeItem] = Field(description="Finalized trades")
+
+
+class PaperTradeHistoryResponse(BaseModel):
+    total: int = Field(description="Number of returned trades", examples=[10])
+    items: list[PaperTradeItem] = Field(description="Paper trades")
+
+
+class PaperTradeDailyReportResponse(BaseModel):
+    trade_date: str = Field(description="Report date", examples=["2026-05-13"])
+    total_trades: int = Field(description="Number of trades opened that day", examples=[5])
+    open_count: int = Field(description="Still open trades")
+    finalized_count: int = Field(description="Finalized trades")
+    hit_2_percent_count: int = Field(description="Trades that touched +2 percent")
+    hit_3_percent_count: int = Field(description="Trades that touched +3 percent")
+    hit_limit_up_count: int = Field(description="Trades that touched +10 percent from entry")
+    win_count: int = Field(description="Win outcomes")
+    loss_count: int = Field(description="Loss outcomes")
+    neutral_count: int = Field(description="Neutral outcomes")
+    average_max_return_percent: float | None = Field(default=None, description="Average max return")
+    average_close_return_percent: float | None = Field(default=None, description="Average close return")
+    best_scenario: str | None = Field(default=None, description="Best average max-return scenario")
+    worst_scenario: str | None = Field(default=None, description="Worst average max-return scenario")
+    scenario_counts: dict[str, int] = Field(default_factory=dict, description="Scenario distribution")
+    summary: str = Field(description="Human-readable report summary")
 
 
 class AnalysisRunHistoryResponse(BaseModel):

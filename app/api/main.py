@@ -13,6 +13,7 @@ from app.api.routes.macro_events import router as macro_events_router
 from app.api.routes.news import router as news_router
 from app.api.routes.news_impact import router as news_impact_router
 from app.api.routes.paper_decision_log import router as paper_decision_log_router
+from app.api.routes.paper_trades import router as paper_trades_router
 from app.api.routes.replay_evaluation import router as replay_evaluation_router
 from app.api.routes.scan import router as scan_router
 from app.api.routes.market_data import router as market_data_router
@@ -52,6 +53,7 @@ def create_app() -> FastAPI:
     app.include_router(news_impact_router, prefix=settings.api_v1_prefix)
     app.include_router(replay_evaluation_router, prefix=settings.api_v1_prefix)
     app.include_router(paper_decision_log_router, prefix=settings.api_v1_prefix)
+    app.include_router(paper_trades_router, prefix=settings.api_v1_prefix)
     app.include_router(scan_router, prefix=settings.api_v1_prefix)
 
     return app

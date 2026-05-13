@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete, or_, select
+from sqlalchemy.dialects.postgresql import insert
 
 from app.core.config import settings
 from app.db.models import MarketSnapshotCurrent, OHLCVBarCache
@@ -90,26 +91,35 @@ def save_ohlcv_response(response: OHLCVResponse) -> None:
     }
     with SessionLocal() as session:
         for ts, candle in candles_by_timestamp.items():
-            statement = select(OHLCVBarCache).where(
-                OHLCVBarCache.ticker == normalized_ticker,
-                OHLCVBarCache.timeframe == normalized_timeframe,
-                OHLCVBarCache.timestamp == ts,
+            updated_at = datetime.utcnow()
+            statement = insert(OHLCVBarCache).values(
+                ticker=normalized_ticker,
+                timeframe=normalized_timeframe,
+                timestamp=ts,
+                open=candle.open,
+                high=candle.high,
+                low=candle.low,
+                close=candle.close,
+                volume=candle.volume,
+                source=response.source,
+                updated_at=updated_at,
+            ).on_conflict_do_update(
+                index_elements=[
+                    OHLCVBarCache.ticker,
+                    OHLCVBarCache.timeframe,
+                    OHLCVBarCache.timestamp,
+                ],
+                set_={
+                    "open": candle.open,
+                    "high": candle.high,
+                    "low": candle.low,
+                    "close": candle.close,
+                    "volume": candle.volume,
+                    "source": response.source,
+                    "updated_at": updated_at,
+                },
             )
-            existing = session.execute(statement).scalar_one_or_none()
-            if existing is None:
-                existing = OHLCVBarCache(
-                    ticker=normalized_ticker,
-                    timeframe=normalized_timeframe,
-                    timestamp=ts,
-                )
-                session.add(existing)
-            existing.open = candle.open
-            existing.high = candle.high
-            existing.low = candle.low
-            existing.close = candle.close
-            existing.volume = candle.volume
-            existing.source = response.source
-            existing.updated_at = datetime.utcnow()
+            session.execute(statement)
 
         cutoff = datetime.utcnow() - timedelta(days=_retention_days(normalized_timeframe))
         session.execute(

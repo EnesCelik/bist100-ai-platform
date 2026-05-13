@@ -26,6 +26,10 @@ class SchedulerRuntimeState:
     last_paper_log_completed_at: str | None = None
     last_paper_log_status: str | None = None
     last_paper_log_message: str | None = None
+    last_paper_trade_started_at: str | None = None
+    last_paper_trade_completed_at: str | None = None
+    last_paper_trade_status: str | None = None
+    last_paper_trade_message: str | None = None
 
 
 _runtime_state = SchedulerRuntimeState()
@@ -68,6 +72,11 @@ def get_runtime_health() -> RuntimeHealthResponse:
         last_paper_log_completed_at=_runtime_state.last_paper_log_completed_at,
         last_paper_log_status=_runtime_state.last_paper_log_status,
         last_paper_log_message=_runtime_state.last_paper_log_message,
+        paper_trade_enabled=settings.scheduler_enabled and settings.scheduler_paper_trade_enabled,
+        last_paper_trade_started_at=_runtime_state.last_paper_trade_started_at,
+        last_paper_trade_completed_at=_runtime_state.last_paper_trade_completed_at,
+        last_paper_trade_status=_runtime_state.last_paper_trade_status,
+        last_paper_trade_message=_runtime_state.last_paper_trade_message,
     )
 
 
@@ -136,15 +145,46 @@ def _run_paper_log_once() -> None:
         _runtime_state.last_paper_log_message = str(exc)
 
 
+def _run_paper_trade_once() -> None:
+    from app.services.paper_trade_simulation_service import finalize_open_trades, run_paper_trade_cycle, should_finalize_day
+
+    _runtime_state.last_paper_trade_started_at = _utc_now_iso()
+    _runtime_state.last_paper_trade_status = "running"
+    try:
+        if should_finalize_day():
+            result = finalize_open_trades()
+            message = f"finalized_count={result.finalized_count}, wins={result.win_count}, losses={result.loss_count}, neutral={result.neutral_count}"
+        else:
+            result = run_paper_trade_cycle(
+                open_limit=max(settings.scheduler_paper_trade_open_limit, 1),
+                min_score=settings.scheduler_paper_trade_min_score,
+            )
+            message = (
+                f"monitor_checked={result['monitor_checked_count']}, "
+                f"monitor_updated={result['monitor_updated_count']}, "
+                f"opened_count={result['opened_count']}, "
+                f"opened_tickers={','.join(result['opened_tickers']) if result['opened_tickers'] else 'none'}"
+            )
+        _runtime_state.last_paper_trade_completed_at = _utc_now_iso()
+        _runtime_state.last_paper_trade_status = "ok"
+        _runtime_state.last_paper_trade_message = message
+    except Exception as exc:  # noqa: BLE001
+        _runtime_state.last_paper_trade_completed_at = _utc_now_iso()
+        _runtime_state.last_paper_trade_status = "error"
+        _runtime_state.last_paper_trade_message = str(exc)
+
+
 async def _scheduler_loop() -> None:
     cleanup_interval = max(settings.scheduler_cleanup_interval_minutes, 1)
     prefetch_interval = max(settings.scheduler_prefetch_interval_minutes, 1)
     paper_log_interval = max(settings.scheduler_paper_log_interval_minutes, 1)
+    paper_trade_interval = max(settings.scheduler_paper_trade_interval_minutes, 1)
     prefetch_initial_delay = max(settings.scheduler_prefetch_initial_delay_minutes, 0)
     paper_log_initial_delay = max(settings.scheduler_paper_log_initial_delay_minutes, 0)
     next_cleanup_at = datetime.utcnow()
     next_prefetch_at = datetime.utcnow() + timedelta(minutes=prefetch_initial_delay)
     next_paper_log_at = datetime.utcnow() + timedelta(minutes=paper_log_initial_delay)
+    next_paper_trade_at = datetime.utcnow()
 
     while _stop_event is not None and not _stop_event.is_set():
         now = datetime.utcnow()
@@ -167,6 +207,10 @@ async def _scheduler_loop() -> None:
             if prefetch_ready:
                 await asyncio.to_thread(_run_paper_log_once)
                 next_paper_log_at = datetime.utcnow() + timedelta(minutes=paper_log_interval)
+
+        if settings.scheduler_paper_trade_enabled and now >= next_paper_trade_at:
+            await asyncio.to_thread(_run_paper_trade_once)
+            next_paper_trade_at = datetime.utcnow() + timedelta(minutes=paper_trade_interval)
 
         try:
             await asyncio.wait_for(_stop_event.wait(), timeout=15)
