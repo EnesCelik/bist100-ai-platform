@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 
-from app.data_sources.market_data.provider import get_market_ohlcv, get_market_snapshot
+from app.data_sources.market_data.provider import get_market_ohlcv, get_market_snapshot, get_order_book_pressure
 from app.models.schemas import (
     GarantiBrowserBootstrapRequest,
     GarantiBrowserBootstrapResponse,
@@ -11,6 +11,7 @@ from app.models.schemas import (
     MarketDataDebugResponse,
     MarketDataResponse,
     OHLCVResponse,
+    OrderBookPressureResponse,
 )
 from app.services.garanti_sso_service import complete_garanti_sso_login, start_garanti_sso_login
 from app.services.market_data_cache_service import cleanup_market_data_cache, get_market_data_debug
@@ -35,6 +36,10 @@ def fetch_market_ohlcv(ticker: str, timeframe: str = "1G", bars: int = 60) -> OH
             detail=f"OHLCV data for ticker '{ticker.upper()}' was not found from the currently configured free providers.",
         )
     return market_ohlcv
+
+
+def fetch_order_book_pressure(ticker: str, levels: int = 10) -> OrderBookPressureResponse:
+    return get_order_book_pressure(ticker, levels=levels)
 
 
 def fetch_market_data_debug_for_ticker(ticker: str, timeframe: str = "1G") -> MarketDataDebugResponse:

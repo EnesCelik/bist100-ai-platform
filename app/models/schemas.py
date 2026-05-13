@@ -158,6 +158,28 @@ class MarketDataResponse(BaseModel):
     source: str = Field(description="Data source name", examples=["mock_market_data_tool"])
 
 
+class OrderBookLevel(BaseModel):
+    price: float = Field(description="Order book level price", examples=[128.4])
+    quantity: int = Field(description="Order book level quantity", examples=[125000])
+
+
+class OrderBookPressureResponse(BaseModel):
+    ticker: str = Field(description="BIST ticker code", examples=["GARAN"])
+    available: bool = Field(description="Whether real order book/depth data was available", examples=[True])
+    bid_total_quantity: int = Field(description="Total visible bid quantity across returned levels", examples=[2500000])
+    ask_total_quantity: int = Field(description="Total visible ask quantity across returned levels", examples=[1200000])
+    bid_ask_imbalance: float | None = Field(default=None, description="Bid quantity divided by ask quantity")
+    pressure_bucket: str = Field(description="Order book pressure bucket", examples=["strong_bid_pressure"])
+    top_bid_price: float | None = Field(default=None, description="Best visible bid price")
+    top_ask_price: float | None = Field(default=None, description="Best visible ask price")
+    top_bid_quantity: int | None = Field(default=None, description="Best visible bid quantity")
+    top_ask_quantity: int | None = Field(default=None, description="Best visible ask quantity")
+    bid_levels: list[OrderBookLevel] = Field(default_factory=list, description="Visible bid levels")
+    ask_levels: list[OrderBookLevel] = Field(default_factory=list, description="Visible ask levels")
+    source: str = Field(description="Order book data source", examples=["matriks_depth"])
+    message: str | None = Field(default=None, description="Availability or parsing note")
+
+
 class OHLCVBar(BaseModel):
     timestamp: str = Field(description="Bar timestamp in ISO format", examples=["2026-04-21T10:00:00+03:00"])
     open: float = Field(description="Open price", examples=[322.5])
@@ -324,6 +346,8 @@ class LimitUpCandidateItem(BaseModel):
     breakout_state_1h: str | None = Field(default=None, description="1H breakout state")
     spread_percent: float | None = Field(default=None, description="Best ask/bid spread percentage when available")
     order_flow_proxy: str = Field(description="Order-flow proxy derived from best bid/ask and spread", examples=["healthy_spread"])
+    order_book_pressure: str | None = Field(default=None, description="Depth/order book pressure bucket when available")
+    bid_ask_imbalance: float | None = Field(default=None, description="Visible bid/ask quantity imbalance when available")
     entry_trigger: float | None = Field(default=None, description="Level that confirms upside continuation")
     invalidation_level: float | None = Field(default=None, description="Level that weakens the setup")
     reasons: list[str] = Field(description="Positive reasons for the limit-up candidate ranking")
@@ -358,6 +382,8 @@ class OpeningCandidateItem(BaseModel):
     invalidation_level: float | None = Field(default=None, description="Level that weakens the opening setup")
     spread_percent: float | None = Field(default=None, description="Best ask/bid spread percentage when available")
     order_flow_proxy: str = Field(description="Order-flow proxy derived from best bid/ask and spread", examples=["healthy_spread"])
+    order_book_pressure: str | None = Field(default=None, description="Depth/order book pressure bucket when available")
+    bid_ask_imbalance: float | None = Field(default=None, description="Visible bid/ask quantity imbalance when available")
     gap_risk: str = Field(description="Qualitative gap/chase risk", examples=["medium"])
     reasons: list[str] = Field(description="Positive reasons for the opening candidate ranking")
     risks: list[str] = Field(description="Risks or invalidation notes")

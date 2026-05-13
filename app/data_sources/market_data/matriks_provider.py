@@ -11,12 +11,13 @@ from typing import Any
 from urllib import error, parse, request
 
 from app.core.config import settings
-from app.models.schemas import MarketDataResponse, OHLCVBar, OHLCVResponse
+from app.models.schemas import MarketDataResponse, OHLCVBar, OHLCVResponse, OrderBookLevel, OrderBookPressureResponse
 from app.services.market_data_cache_service import get_cached_market_snapshot, save_market_snapshot
 from app.services.market_data_cache_service import get_cached_ohlcv, save_ohlcv_response
 
 MATRIKS_SOURCE_NAME = "matriks_market_data_tool"
 MATRIKS_OHLCV_SOURCE_NAME = "matriks_ohlcv"
+MATRIKS_DEPTH_SOURCE_NAME = "matriks_depth"
 _LOGIN_MSG_TYPE = "A"
 _DEFAULT_SNAPSHOT_PATH = "/dumrul/v1/snapshot-market-real"
 _DEFAULT_BAR_PATH = "/dumrul/v1/tick/bar.gz"
@@ -84,6 +85,18 @@ def build_bar_request_context(ticker: str, timeframe: str, bars: int) -> dict[st
         "bars": max(bars, 1),
         "aggregate": aggregate,
         "fetch_count": max(bars, 1) * max(fetch_multiplier, 1),
+    }
+
+
+def build_depth_request_context(ticker: str, levels: int = 10) -> dict[str, Any]:
+    return {
+        "base_url": settings.matriks_base_url.strip().rstrip("/"),
+        "token": _get_valid_market_data_token(),
+        "depth_path": settings.matriks_depth_path.strip(),
+        "timeout_seconds": settings.matriks_timeout_seconds,
+        "verify_ssl": settings.matriks_verify_ssl,
+        "symbol": normalize_matriks_symbol(ticker),
+        "levels": max(levels, 1),
     }
 
 
@@ -219,6 +232,21 @@ def _build_bar_url(context: dict[str, Any]) -> str:
     return f"{context['base_url']}{bar_path}?{query}"
 
 
+def _build_depth_url(context: dict[str, Any]) -> str:
+    depth_path = context["depth_path"]
+    if not depth_path:
+        return ""
+    if not depth_path.startswith("/"):
+        depth_path = f"/{depth_path}"
+
+    query = parse.urlencode({
+        "symbol": context["symbol"],
+        "count": context["levels"],
+        "timestamp": int(_utcnow().timestamp() * 1000),
+    })
+    return f"{context['base_url']}{depth_path}?{query}"
+
+
 
 def _get_ssl_context(verify_ssl: bool) -> ssl.SSLContext | None:
     if verify_ssl:
@@ -305,6 +333,31 @@ def _fetch_bar_payload(ticker: str, timeframe: str, bars: int) -> list[dict[str,
     if isinstance(payload, list):
         return [item for item in payload if isinstance(item, dict)]
     return None
+
+
+def _fetch_depth_payload(ticker: str, levels: int = 10) -> Any | None:
+    context = build_depth_request_context(ticker, levels=levels)
+    if not context["token"].strip():
+        return None
+
+    request_url = _build_depth_url(context)
+    if not request_url:
+        return None
+
+    req = request.Request(
+        request_url,
+        headers={
+            "Accept": "application/json, text/plain, */*",
+            "Content-Type": "application/json; charset=utf-8",
+            "Authorization": f"jwt {context['token']}",
+        },
+    )
+
+    try:
+        with _open_request(req, timeout_seconds=context["timeout_seconds"], verify_ssl=context["verify_ssl"]) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except (error.URLError, error.HTTPError, TimeoutError, json.JSONDecodeError):
+        return None
 
 
 
@@ -566,6 +619,125 @@ def _map_bar_payload(ticker: str, timeframe: str, bars: int, payload: list[dict[
     )
 
 
+def _extract_depth_sides(payload: Any) -> tuple[list[Any], list[Any]]:
+    if isinstance(payload, dict):
+        for key in ("data", "items", "result"):
+            value = payload.get(key)
+            if isinstance(value, dict):
+                payload = value
+                break
+        bid_candidates = (
+            payload.get("bids"),
+            payload.get("bid"),
+            payload.get("buy"),
+            payload.get("buyOrders"),
+            payload.get("bidLevels"),
+        )
+        ask_candidates = (
+            payload.get("asks"),
+            payload.get("ask"),
+            payload.get("sell"),
+            payload.get("sellOrders"),
+            payload.get("askLevels"),
+        )
+        bids = next((value for value in bid_candidates if isinstance(value, list)), [])
+        asks = next((value for value in ask_candidates if isinstance(value, list)), [])
+        return bids, asks
+
+    if isinstance(payload, list):
+        bids: list[Any] = []
+        asks: list[Any] = []
+        for item in payload:
+            if not isinstance(item, dict):
+                continue
+            side = str(_pick_first(item, "side", "S", "type", default="")).lower()
+            if side in {"bid", "buy", "b", "alis", "alış"}:
+                bids.append(item)
+            elif side in {"ask", "sell", "s", "satis", "satış"}:
+                asks.append(item)
+        return bids, asks
+
+    return [], []
+
+
+def _map_depth_level(item: Any) -> OrderBookLevel | None:
+    if isinstance(item, dict):
+        price = _to_float(_pick_first(item, "price", "p", "bid", "ask", "levelPrice"), default=0.0)
+        quantity = _to_int(_pick_first(item, "quantity", "q", "qty", "lot", "amount", "levelQuantity"), default=0)
+    elif isinstance(item, (list, tuple)) and len(item) >= 2:
+        price = _to_float(item[0], default=0.0)
+        quantity = _to_int(item[1], default=0)
+    else:
+        return None
+
+    if price <= 0 or quantity <= 0:
+        return None
+    return OrderBookLevel(price=round(price, 4), quantity=quantity)
+
+
+def _pressure_bucket(imbalance: float | None) -> str:
+    if imbalance is None:
+        return "unavailable"
+    if imbalance >= 2.0:
+        return "strong_bid_pressure"
+    if imbalance >= 1.25:
+        return "bid_pressure"
+    if imbalance > 0.8:
+        return "balanced"
+    if imbalance > 0.5:
+        return "ask_pressure"
+    return "strong_ask_pressure"
+
+
+def _unavailable_depth_response(ticker: str, message: str) -> OrderBookPressureResponse:
+    return OrderBookPressureResponse(
+        ticker=ticker.upper(),
+        available=False,
+        bid_total_quantity=0,
+        ask_total_quantity=0,
+        bid_ask_imbalance=None,
+        pressure_bucket="unavailable",
+        top_bid_price=None,
+        top_ask_price=None,
+        top_bid_quantity=None,
+        top_ask_quantity=None,
+        bid_levels=[],
+        ask_levels=[],
+        source=MATRIKS_DEPTH_SOURCE_NAME,
+        message=message,
+    )
+
+
+def _map_depth_payload(ticker: str, levels: int, payload: Any) -> OrderBookPressureResponse:
+    raw_bids, raw_asks = _extract_depth_sides(payload)
+    bid_levels = [level for item in raw_bids for level in [_map_depth_level(item)] if level is not None][:levels]
+    ask_levels = [level for item in raw_asks for level in [_map_depth_level(item)] if level is not None][:levels]
+
+    if not bid_levels and not ask_levels:
+        return _unavailable_depth_response(ticker, "Depth payload could not be parsed into bid/ask levels.")
+
+    bid_total = sum(item.quantity for item in bid_levels)
+    ask_total = sum(item.quantity for item in ask_levels)
+    imbalance = round(bid_total / ask_total, 3) if ask_total > 0 else None
+
+    return OrderBookPressureResponse(
+        ticker=ticker.upper(),
+        available=True,
+        bid_total_quantity=bid_total,
+        ask_total_quantity=ask_total,
+        bid_ask_imbalance=imbalance,
+        pressure_bucket=_pressure_bucket(imbalance),
+        top_bid_price=bid_levels[0].price if bid_levels else None,
+        top_ask_price=ask_levels[0].price if ask_levels else None,
+        top_bid_quantity=bid_levels[0].quantity if bid_levels else None,
+        top_ask_quantity=ask_levels[0].quantity if ask_levels else None,
+        bid_levels=bid_levels,
+        ask_levels=ask_levels,
+        source=MATRIKS_DEPTH_SOURCE_NAME,
+        message=None,
+    )
+
+
 def _aggregate_candles(candles: list[OHLCVBar], aggregate: int) -> list[OHLCVBar]:
     if aggregate <= 1:
         return candles
@@ -674,3 +846,16 @@ def get_market_ohlcv(ticker: str, timeframe: str = "1G", bars: int = 60) -> OHLC
 
     save_ohlcv_response(response)
     return response
+
+
+def get_order_book_pressure(ticker: str, levels: int = 10) -> OrderBookPressureResponse:
+    if not is_matriks_configured():
+        return _unavailable_depth_response(ticker, "Matriks provider is not configured.")
+    if not settings.matriks_depth_path.strip():
+        return _unavailable_depth_response(ticker, "Matriks depth path is not configured yet.")
+
+    payload = _fetch_depth_payload(ticker, levels=levels)
+    if payload is None:
+        return _unavailable_depth_response(ticker, "Matriks depth request failed or returned no payload.")
+
+    return _map_depth_payload(ticker, levels=max(levels, 1), payload=payload)

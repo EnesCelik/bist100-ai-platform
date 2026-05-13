@@ -1,4 +1,4 @@
-from app.models.schemas import MarketDataResponse
+from app.models.schemas import MarketDataResponse, OrderBookPressureResponse
 
 
 # Simdilik gercek bir broker ya da API baglantisi yok.
@@ -45,3 +45,22 @@ def get_market_snapshot(ticker: str) -> MarketDataResponse | None:
 
     # Ham sozlugu schema nesnesine cevirerek kontrollu veri dondur.
     return MarketDataResponse(**market_snapshot)
+
+
+def get_order_book_pressure(ticker: str, levels: int = 10) -> OrderBookPressureResponse:
+    return OrderBookPressureResponse(
+        ticker=ticker.upper(),
+        available=False,
+        bid_total_quantity=0,
+        ask_total_quantity=0,
+        bid_ask_imbalance=None,
+        pressure_bucket="unavailable",
+        top_bid_price=None,
+        top_ask_price=None,
+        top_bid_quantity=None,
+        top_ask_quantity=None,
+        bid_levels=[],
+        ask_levels=[],
+        source="mock_market_data_tool",
+        message="Mock provider does not expose order book depth.",
+    )

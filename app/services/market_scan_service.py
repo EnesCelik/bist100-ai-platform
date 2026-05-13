@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import select
 
 from app.data_sources.company_data.provider import list_company_records
-from app.data_sources.market_data.provider import get_active_market_data_provider, get_market_snapshot
+from app.data_sources.market_data.provider import get_active_market_data_provider, get_market_snapshot, get_order_book_pressure
 from app.db.models import ScanSnapshot
 from app.db.session import SessionLocal, ensure_runtime_schema
 from app.models.schemas import (
@@ -288,6 +288,24 @@ def _liquidity_component(market_snapshot) -> tuple[float, float | None, str, lis
     return -2.0, spread, proxy, reasons, ["Derinlik verisi yok, emir akisi proxy ile sinirli"]
 
 
+def _order_book_pressure_component(ticker: str) -> tuple[float, str | None, float | None, list[str], list[str]]:
+    pressure = get_order_book_pressure(ticker, levels=10)
+    if not pressure.available:
+        return 0.0, pressure.pressure_bucket, pressure.bid_ask_imbalance, [], []
+
+    if pressure.pressure_bucket == "strong_bid_pressure":
+        return 12.0, pressure.pressure_bucket, pressure.bid_ask_imbalance, ["Derinlikte guclu alis baskisi var"], []
+    if pressure.pressure_bucket == "bid_pressure":
+        return 7.0, pressure.pressure_bucket, pressure.bid_ask_imbalance, ["Derinlik alis tarafini destekliyor"], []
+    if pressure.pressure_bucket == "balanced":
+        return 0.0, pressure.pressure_bucket, pressure.bid_ask_imbalance, [], []
+    if pressure.pressure_bucket == "ask_pressure":
+        return -7.0, pressure.pressure_bucket, pressure.bid_ask_imbalance, [], ["Derinlik satis tarafini destekliyor"]
+    if pressure.pressure_bucket == "strong_ask_pressure":
+        return -12.0, pressure.pressure_bucket, pressure.bid_ask_imbalance, [], ["Derinlikte guclu satis baskisi var"]
+    return 0.0, pressure.pressure_bucket, pressure.bid_ask_imbalance, [], []
+
+
 def _opening_gap_risk(change_percent: float | None, daily_chart) -> str:
     if change_percent is None:
         return "unknown"
@@ -470,6 +488,7 @@ def _build_opening_candidate(company) -> tuple[OpeningCandidateItem | None, bool
     volume_score, daily_volume_ratio, volume_reasons, volume_risks = _opening_volume_component(market_snapshot, daily_chart)
     technical_score, technical_reasons, technical_risks = _opening_technical_component(daily_chart, intraday_1h, intraday_4h)
     liquidity_score, spread, order_proxy, liquidity_reasons, liquidity_risks = _liquidity_component(market_snapshot)
+    book_score, book_pressure, book_imbalance, book_reasons, book_risks = _order_book_pressure_component(company.ticker)
     calibration_score, calibration_reasons, calibration_risks = _opening_calibration_component(trade_calibration)
     closing_strength = _closing_strength_proxy(daily_chart, intraday_1h, intraday_4h)
 
@@ -480,6 +499,7 @@ def _build_opening_candidate(company) -> tuple[OpeningCandidateItem | None, bool
         + volume_score
         + technical_score
         + (liquidity_score * 0.65)
+        + book_score
         + calibration_score
         + strength_score,
         0.0,
@@ -492,8 +512,8 @@ def _build_opening_candidate(company) -> tuple[OpeningCandidateItem | None, bool
     if score < 44:
         return None, False
 
-    reasons = list(dict.fromkeys(change_reasons + volume_reasons + technical_reasons + liquidity_reasons + calibration_reasons))[:6]
-    risks = list(dict.fromkeys(change_risks + volume_risks + technical_risks + liquidity_risks + calibration_risks))[:6]
+    reasons = list(dict.fromkeys(change_reasons + volume_reasons + technical_reasons + liquidity_reasons + book_reasons + calibration_reasons))[:6]
+    risks = list(dict.fromkeys(change_risks + volume_risks + technical_risks + liquidity_risks + book_risks + calibration_risks))[:6]
 
     return OpeningCandidateItem(
         ticker=company.ticker,
@@ -515,6 +535,8 @@ def _build_opening_candidate(company) -> tuple[OpeningCandidateItem | None, bool
         invalidation_level=_pick_opening_invalidation(daily_chart, intraday_1h, intraday_4h),
         spread_percent=spread,
         order_flow_proxy=order_proxy,
+        order_book_pressure=book_pressure,
+        bid_ask_imbalance=book_imbalance,
         gap_risk=_opening_gap_risk(market_snapshot.change_percent, daily_chart),
         reasons=reasons,
         risks=risks,
@@ -539,13 +561,14 @@ def _build_limit_up_candidate(company) -> tuple[LimitUpCandidateItem | None, boo
     volume_score, daily_volume_ratio, intraday_volume_ratio, volume_reasons, volume_risks = _volume_pressure_component(market_snapshot, daily_chart, intraday_1h)
     technical_score, technical_reasons, technical_risks = _technical_pressure_component(daily_chart, intraday_1h, intraday_4h)
     liquidity_score, spread, order_proxy, liquidity_reasons, liquidity_risks = _liquidity_component(market_snapshot)
+    book_score, book_pressure, book_imbalance, book_reasons, book_risks = _order_book_pressure_component(company.ticker)
 
-    score = _clamp(28.0 + change_score + volume_score + technical_score + liquidity_score, 0.0, 100.0)
+    score = _clamp(28.0 + change_score + volume_score + technical_score + liquidity_score + book_score, 0.0, 100.0)
     if score < 42:
         return None, False
 
-    reasons = list(dict.fromkeys(change_reasons + volume_reasons + technical_reasons + liquidity_reasons))[:5]
-    risks = list(dict.fromkeys(change_risks + volume_risks + technical_risks + liquidity_risks))[:5]
+    reasons = list(dict.fromkeys(change_reasons + volume_reasons + technical_reasons + liquidity_reasons + book_reasons))[:5]
+    risks = list(dict.fromkeys(change_risks + volume_risks + technical_risks + liquidity_risks + book_risks))[:5]
 
     return LimitUpCandidateItem(
         ticker=company.ticker,
@@ -564,6 +587,8 @@ def _build_limit_up_candidate(company) -> tuple[LimitUpCandidateItem | None, boo
         breakout_state_1h=intraday_1h.breakout_state if intraday_1h is not None else None,
         spread_percent=spread,
         order_flow_proxy=order_proxy,
+        order_book_pressure=book_pressure,
+        bid_ask_imbalance=book_imbalance,
         entry_trigger=intraday_1h.breakout_buy_trigger if intraday_1h is not None else None,
         invalidation_level=intraday_1h.breakdown_sell_trigger if intraday_1h is not None else None,
         reasons=reasons,

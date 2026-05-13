@@ -10,6 +10,7 @@ from app.models.schemas import (
     MarketDataDebugResponse,
     MarketDataResponse,
     OHLCVResponse,
+    OrderBookPressureResponse,
 )
 from app.services.market_data_service import (
     bootstrap_market_data_from_browser,
@@ -17,6 +18,7 @@ from app.services.market_data_service import (
     fetch_market_data,
     fetch_market_data_debug_for_ticker,
     fetch_market_ohlcv,
+    fetch_order_book_pressure,
     run_market_data_cache_cleanup,
     start_market_data_garanti_sso,
 )
@@ -61,6 +63,14 @@ def get_market_ohlcv(
     bars: int = Query(default=60, ge=10, le=300),
 ) -> OHLCVResponse:
     return fetch_market_ohlcv(ticker, timeframe=timeframe, bars=bars)
+
+
+@router.get("/market-data/{ticker}/order-book-pressure", response_model=OrderBookPressureResponse)
+def get_order_book_pressure_endpoint(
+    ticker: str,
+    levels: int = Query(default=10, ge=1, le=25),
+) -> OrderBookPressureResponse:
+    return fetch_order_book_pressure(ticker, levels=levels)
 
 
 @router.post("/market-data/cleanup/cache", response_model=MarketDataCleanupResponse)
