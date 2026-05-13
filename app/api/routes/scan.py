@@ -1,12 +1,19 @@
 from fastapi import APIRouter, HTTPException, Query
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.models.schemas import LimitUpCandidateResponse, MarketScanResponse, ScanSnapshotCreateResponse, ScanSnapshotHistoryResponse
+from app.models.schemas import (
+    LimitUpCandidateResponse,
+    MarketScanResponse,
+    OpeningCandidateResponse,
+    ScanSnapshotCreateResponse,
+    ScanSnapshotHistoryResponse,
+)
 from app.services.market_scan_service import (
     get_market_scan_snapshot_history,
     save_market_scan_snapshot,
     scan_limit_up_candidates,
     scan_market,
+    scan_opening_candidates,
 )
 
 
@@ -28,6 +35,13 @@ def get_limit_up_candidates(
     limit: int = Query(default=15, ge=1, le=100),
 ) -> LimitUpCandidateResponse:
     return scan_limit_up_candidates(limit=limit)
+
+
+@router.get("/scan/opening-candidates", response_model=OpeningCandidateResponse)
+def get_opening_candidates(
+    limit: int = Query(default=15, ge=1, le=100),
+) -> OpeningCandidateResponse:
+    return scan_opening_candidates(limit=limit)
 
 
 @router.post("/scan/market/snapshot", response_model=ScanSnapshotCreateResponse)

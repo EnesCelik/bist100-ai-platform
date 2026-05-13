@@ -12,6 +12,8 @@ from app.models.schemas import (
     LimitUpCandidateResponse,
     MarketScanItem,
     MarketScanResponse,
+    OpeningCandidateItem,
+    OpeningCandidateResponse,
     ScanSnapshotCreateResponse,
     ScanSnapshotHistoryItem,
     ScanSnapshotHistoryResponse,
@@ -281,6 +283,232 @@ def _liquidity_component(market_snapshot) -> tuple[float, float | None, str, lis
     if proxy == "wide_spread":
         return -6.0, spread, proxy, reasons, ["Spread genis; emir kalitesi zayiflayabilir"]
     return -2.0, spread, proxy, reasons, ["Derinlik verisi yok, emir akisi proxy ile sinirli"]
+
+
+def _opening_gap_risk(change_percent: float | None, daily_chart) -> str:
+    if change_percent is None:
+        return "unknown"
+    rsi = daily_chart.rsi14 if daily_chart is not None else 50
+    if change_percent >= 7.5 or rsi >= 78:
+        return "high"
+    if change_percent >= 4.8 or rsi >= 72:
+        return "medium"
+    return "low"
+
+
+def _closing_strength_proxy(daily_chart, intraday_1h, intraday_4h) -> float | None:
+    charts = [chart for chart in (daily_chart, intraday_1h, intraday_4h) if chart is not None]
+    if not charts:
+        return None
+
+    score = 42.0
+    weights = (0.45, 0.35, 0.2)
+    for chart, weight in zip((daily_chart, intraday_1h, intraday_4h), weights, strict=False):
+        if chart is None:
+            continue
+        if chart.signal_bias == "bullish":
+            score += 12.0 * weight
+        elif chart.signal_bias == "bearish":
+            score -= 12.0 * weight
+
+        if chart.structure_bias == "bullish":
+            score += 7.0 * weight
+        elif chart.structure_bias == "bearish":
+            score -= 7.0 * weight
+
+        if chart.breakout_state == "confirmed_breakout_up":
+            score += 16.0 * weight
+        elif chart.breakout_state == "breakout_watch_up":
+            score += 9.0 * weight
+        elif chart.breakout_state in {"breakout_watch_down", "confirmed_breakout_down"}:
+            score -= 12.0 * weight
+
+        if 58 <= chart.price_position_percent <= 92:
+            score += 7.0 * weight
+        elif chart.price_position_percent > 96:
+            score -= 4.0 * weight
+        elif chart.price_position_percent < 28:
+            score -= 5.0 * weight
+
+    return round(_clamp(score, 0.0, 100.0), 2)
+
+
+def _opening_change_component(change_percent: float | None) -> tuple[float, list[str], list[str], bool]:
+    reasons: list[str] = []
+    risks: list[str] = []
+    if change_percent is None:
+        return 0.0, reasons, ["Gunluk degisim okunamadi"], False
+    if change_percent >= 9.3:
+        return -100.0, reasons, ["Hisse zaten tavan bolgesinde"], True
+    if 1.0 <= change_percent <= 5.8:
+        reasons.append("Onceki seans pozitif ama halen kovalamaca bandina tasinmamis")
+        return 18.0, reasons, risks, False
+    if 5.8 < change_percent < 9.3:
+        reasons.append("Guclu momentum var")
+        risks.append("Yuksek kapanis primi nedeniyle gap/kovalama riski artiyor")
+        return 8.0, reasons, risks, False
+    if -0.8 <= change_percent < 1.0:
+        reasons.append("Yatay kapanis, ertesi seans kirilim icin hareket alani birakiyor")
+        return 7.0, reasons, risks, False
+    if -2.5 <= change_percent < -0.8:
+        risks.append("Onceki seans zayif kapanis var")
+        return -4.0, reasons, risks, False
+    risks.append("Onceki seans satis baskisi belirgin")
+    return -10.0, reasons, risks, False
+
+
+def _opening_volume_component(market_snapshot, daily_chart) -> tuple[float, float | None, list[str], list[str]]:
+    reasons: list[str] = []
+    risks: list[str] = []
+    if market_snapshot is None or daily_chart is None or daily_chart.avg_volume <= 0:
+        return 0.0, None, reasons, ["Hacim ortalamasi okunamadi"]
+
+    ratio = round(market_snapshot.volume / max(daily_chart.avg_volume, 1), 2)
+    if ratio >= 2.0:
+        return 20.0, ratio, ["Kapanis hacmi ortalamanin cok uzerinde"], risks
+    if ratio >= 1.35:
+        return 14.0, ratio, ["Kapanis hacmi ortalamanin belirgin uzerinde"], risks
+    if ratio >= 1.0:
+        return 7.0, ratio, ["Kapanis hacmi ortalama ustunde"], risks
+    if ratio < 0.65:
+        return -9.0, ratio, reasons, ["Kapanis hacmi teyidi zayif"]
+    return 0.0, ratio, reasons, risks
+
+
+def _opening_technical_component(daily_chart, intraday_1h, intraday_4h) -> tuple[float, list[str], list[str]]:
+    reasons: list[str] = []
+    risks: list[str] = []
+    score = 0.0
+
+    for label, chart, weight in (("gunluk", daily_chart, 1.0), ("1H", intraday_1h, 1.05), ("4H", intraday_4h, 0.85)):
+        if chart is None:
+            continue
+        if chart.signal_bias == "bullish":
+            score += 7.0 * weight
+            reasons.append(f"{label} teknik bias pozitif")
+        elif chart.signal_bias == "bearish":
+            score -= 8.0 * weight
+            risks.append(f"{label} teknik bias negatif")
+
+        if chart.structure_bias == "bullish":
+            score += 4.0 * weight
+        elif chart.structure_bias == "bearish":
+            score -= 4.0 * weight
+
+        if chart.breakout_state == "confirmed_breakout_up":
+            score += 12.0 * weight
+            reasons.append(f"{label} yukari kirilim teyidi var")
+        elif chart.breakout_state == "breakout_watch_up":
+            score += 8.0 * weight
+            reasons.append(f"{label} acilis icin yukari kirilim izleme bolgesinde")
+        elif chart.breakout_state in {"breakout_watch_down", "confirmed_breakout_down"}:
+            score -= 9.0 * weight
+            risks.append(f"{label} asagi kirilim riski var")
+
+    if daily_chart is not None:
+        if 52 <= daily_chart.rsi14 <= 70:
+            score += 5.0
+            reasons.append("RSI devam momentumu icin saglikli bantta")
+        elif daily_chart.rsi14 > 78:
+            score -= 9.0
+            risks.append("Gunluk RSI asiri isinmis")
+        elif daily_chart.rsi14 < 42:
+            score -= 6.0
+            risks.append("Gunluk RSI momentum tarafi zayif")
+
+    return score, reasons, risks
+
+
+def _opening_calibration_component(trade_calibration) -> tuple[float, list[str], list[str]]:
+    reasons: list[str] = []
+    risks: list[str] = []
+    if trade_calibration is None:
+        return 0.0, reasons, risks
+    if trade_calibration.calibration_bias == "supportive":
+        reasons.append("Gecmis replay kalibrasyonu benzer setup icin destekleyici")
+        return 5.0, reasons, risks
+    if trade_calibration.calibration_bias == "fragile":
+        risks.append("Gecmis replay kalibrasyonu benzer setup icin kirilgan")
+        return -7.0, reasons, risks
+    return 0.0, reasons, risks
+
+
+def _pick_opening_trigger(daily_chart, intraday_1h, intraday_4h) -> float | None:
+    for chart in (intraday_1h, intraday_4h, daily_chart):
+        if chart is not None and chart.breakout_buy_trigger > 0:
+            return chart.breakout_buy_trigger
+    return None
+
+
+def _pick_opening_invalidation(daily_chart, intraday_1h, intraday_4h) -> float | None:
+    for chart in (intraday_1h, intraday_4h, daily_chart):
+        if chart is not None and chart.breakdown_sell_trigger > 0:
+            return chart.breakdown_sell_trigger
+    return None
+
+
+def _build_opening_candidate(company) -> tuple[OpeningCandidateItem | None, bool]:
+    market_snapshot = get_market_snapshot(company.ticker)
+    if market_snapshot is None:
+        return None, False
+
+    change_score, change_reasons, change_risks, already_limit = _opening_change_component(market_snapshot.change_percent)
+    if already_limit:
+        return None, True
+
+    daily_chart = get_chart_feature_summary(company.ticker, timeframe="1G")
+    intraday_1h = get_chart_feature_summary(company.ticker, timeframe="1H")
+    intraday_4h = get_chart_feature_summary(company.ticker, timeframe="4H")
+    trade_calibration = get_trade_calibration_cached(company.ticker, timeframe="1G", horizon_bars=5, sample_size=8, step_bars=5, use_cache_only=True)
+
+    volume_score, daily_volume_ratio, volume_reasons, volume_risks = _opening_volume_component(market_snapshot, daily_chart)
+    technical_score, technical_reasons, technical_risks = _opening_technical_component(daily_chart, intraday_1h, intraday_4h)
+    liquidity_score, spread, order_proxy, liquidity_reasons, liquidity_risks = _liquidity_component(market_snapshot)
+    calibration_score, calibration_reasons, calibration_risks = _opening_calibration_component(trade_calibration)
+    closing_strength = _closing_strength_proxy(daily_chart, intraday_1h, intraday_4h)
+
+    strength_score = ((closing_strength or 45.0) - 45.0) * 0.28
+    score = _clamp(
+        24.0
+        + change_score
+        + volume_score
+        + technical_score
+        + (liquidity_score * 0.65)
+        + calibration_score
+        + strength_score,
+        0.0,
+        100.0,
+    )
+    if score < 44:
+        return None, False
+
+    reasons = list(dict.fromkeys(change_reasons + volume_reasons + technical_reasons + liquidity_reasons + calibration_reasons))[:6]
+    risks = list(dict.fromkeys(change_risks + volume_risks + technical_risks + liquidity_risks + calibration_risks))[:6]
+
+    return OpeningCandidateItem(
+        ticker=company.ticker,
+        company_name=company.name,
+        sector=company.sector,
+        opening_score=round(score, 2),
+        probability_bucket=_probability_bucket(score),
+        last_price=market_snapshot.last_price,
+        change_percent=market_snapshot.change_percent,
+        volume=market_snapshot.volume,
+        daily_volume_ratio=daily_volume_ratio,
+        closing_strength_proxy=closing_strength,
+        technical_bias=daily_chart.signal_bias if daily_chart is not None else None,
+        intraday_bias_1h=intraday_1h.signal_bias if intraday_1h is not None else None,
+        intraday_bias_4h=intraday_4h.signal_bias if intraday_4h is not None else None,
+        breakout_state_1h=intraday_1h.breakout_state if intraday_1h is not None else None,
+        breakout_state_4h=intraday_4h.breakout_state if intraday_4h is not None else None,
+        opening_trigger=_pick_opening_trigger(daily_chart, intraday_1h, intraday_4h),
+        invalidation_level=_pick_opening_invalidation(daily_chart, intraday_1h, intraday_4h),
+        spread_percent=spread,
+        order_flow_proxy=order_proxy,
+        gap_risk=_opening_gap_risk(market_snapshot.change_percent, daily_chart),
+        reasons=reasons,
+        risks=risks,
+    ), False
 
 
 def _build_limit_up_candidate(company) -> tuple[LimitUpCandidateItem | None, bool]:
@@ -714,6 +942,42 @@ def scan_limit_up_candidates(limit: int = 15) -> LimitUpCandidateResponse:
     )
     limited_items = ranked[: max(limit, 1)]
     return LimitUpCandidateResponse(
+        generated_at=datetime.utcnow().isoformat(),
+        universe_size=len(companies),
+        total=len(limited_items),
+        excluded_already_limit_count=excluded_already_limit_count,
+        items=limited_items,
+    )
+
+
+def scan_opening_candidates(limit: int = 15) -> OpeningCandidateResponse:
+    companies = list_company_records(universe_code="bist100")
+    if not companies:
+        companies = list_company_records()
+
+    candidates: list[OpeningCandidateItem] = []
+    excluded_already_limit_count = 0
+    for company in companies:
+        candidate, already_limit = _build_opening_candidate(company)
+        if already_limit:
+            excluded_already_limit_count += 1
+            continue
+        if candidate is not None:
+            candidates.append(candidate)
+
+    ranked = sorted(
+        candidates,
+        key=lambda item: (
+            item.opening_score,
+            item.daily_volume_ratio or 0,
+            item.closing_strength_proxy or 0,
+            item.change_percent or -999,
+            item.volume or 0,
+        ),
+        reverse=True,
+    )
+    limited_items = ranked[: max(limit, 1)]
+    return OpeningCandidateResponse(
         generated_at=datetime.utcnow().isoformat(),
         universe_size=len(companies),
         total=len(limited_items),

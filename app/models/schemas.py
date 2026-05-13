@@ -338,6 +338,39 @@ class LimitUpCandidateResponse(BaseModel):
     items: list[LimitUpCandidateItem] = Field(description="Ranked limit-up candidate items")
 
 
+class OpeningCandidateItem(BaseModel):
+    ticker: str = Field(description="BIST ticker code", examples=["GARAN"])
+    company_name: str = Field(description="Company name")
+    sector: str = Field(description="Sector name")
+    opening_score: float = Field(description="0-100 next-session opening strength score", examples=[74.2])
+    probability_bucket: str = Field(description="Qualitative probability bucket", examples=["high"])
+    last_price: float | None = Field(default=None, description="Latest traded price")
+    change_percent: float | None = Field(default=None, description="Latest daily percentage change")
+    volume: int | None = Field(default=None, description="Latest daily traded volume")
+    daily_volume_ratio: float | None = Field(default=None, description="Latest volume divided by daily average volume")
+    closing_strength_proxy: float | None = Field(default=None, description="0-100 proxy for close/position strength")
+    technical_bias: str | None = Field(default=None, description="Daily technical bias")
+    intraday_bias_1h: str | None = Field(default=None, description="1H technical bias")
+    intraday_bias_4h: str | None = Field(default=None, description="4H technical bias")
+    breakout_state_1h: str | None = Field(default=None, description="1H breakout state")
+    breakout_state_4h: str | None = Field(default=None, description="4H breakout state")
+    opening_trigger: float | None = Field(default=None, description="Level that strengthens opening continuation")
+    invalidation_level: float | None = Field(default=None, description="Level that weakens the opening setup")
+    spread_percent: float | None = Field(default=None, description="Best ask/bid spread percentage when available")
+    order_flow_proxy: str = Field(description="Order-flow proxy derived from best bid/ask and spread", examples=["healthy_spread"])
+    gap_risk: str = Field(description="Qualitative gap/chase risk", examples=["medium"])
+    reasons: list[str] = Field(description="Positive reasons for the opening candidate ranking")
+    risks: list[str] = Field(description="Risks or invalidation notes")
+
+
+class OpeningCandidateResponse(BaseModel):
+    generated_at: str = Field(description="Scan generation timestamp", examples=["2026-05-12T18:15:00"])
+    universe_size: int = Field(description="Number of companies scanned", examples=[85])
+    total: int = Field(description="Number of returned candidates", examples=[10])
+    excluded_already_limit_count: int = Field(description="Number of symbols excluded because they were already near limit-up")
+    items: list[OpeningCandidateItem] = Field(description="Ranked next-session opening candidate items")
+
+
 class AskRequest(BaseModel):
     question: str = Field(
         description="User question for the assistant",

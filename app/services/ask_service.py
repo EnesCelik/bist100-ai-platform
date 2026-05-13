@@ -154,6 +154,16 @@ def _is_generic_market_pick_question(question: str) -> bool:
         "tavan olabilir",
         "tavana gidebilir",
         "en sert yukselebilecek hisse",
+        "acilista yukselebilecek",
+        "açılışta yükselebilecek",
+        "sabah acilista",
+        "sabah açılışta",
+        "borsa acildiginda",
+        "borsa açıldığında",
+        "ilk acilista",
+        "ilk açılışta",
+        "yarin sabah",
+        "yarın sabah",
     ]
     return any(pattern in lowered for pattern in patterns)
 
@@ -233,9 +243,69 @@ def _is_limit_up_question(question: str) -> bool:
     return any(marker in lowered for marker in markers)
 
 
+def _is_opening_candidate_question(question: str) -> bool:
+    lowered = _question_lower(question)
+    markers = [
+        "acilista",
+        "açılışta",
+        "sabah acilis",
+        "sabah açılış",
+        "borsa acildiginda",
+        "borsa açıldığında",
+        "ilk acilis",
+        "ilk açılış",
+        "yarin sabah",
+        "yarın sabah",
+        "ertesi seans",
+        "ertesi gun",
+        "ertesi gün",
+    ]
+    return any(marker in lowered for marker in markers)
+
+
 
 def _build_generic_market_pick_response(question: str) -> AskResponse:
-    from app.services.market_scan_service import scan_limit_up_candidates, scan_market
+    from app.services.market_scan_service import scan_limit_up_candidates, scan_market, scan_opening_candidates
+
+    if _is_opening_candidate_question(question):
+        opening_scan = scan_opening_candidates(limit=5)
+        if not opening_scan.items:
+            return AskResponse(
+                question=question,
+                route_type="analysis_query",
+                answer="Acilis adayi taramasindan esik ustu guclu aday cikmadi.",
+                used_sources=["opening_candidate_scan"],
+                confidence=0.35,
+                reasoning_summary="Acilis odakli soru icin kapanis hacmi, teknik bias, 1H/4H kirilim ve gap riskiyle ozel opening candidate taramasi calisti ancak aday donmedi.",
+                recommendation=None,
+                analysis_evidence=[],
+                citations=[],
+            )
+        top = opening_scan.items[0]
+        alternates = ", ".join(f"{item.ticker} ({item.probability_bucket}, skor {item.opening_score})" for item in opening_scan.items[1:4])
+        reason_text = "; ".join(top.reasons[:3])
+        risk_text = "; ".join(top.risks[:2])
+        answer = (
+            f"Kesin acilis tahmini veremem; ama acilis adayi taramasina gore en guclu aday {top.ticker} ({top.company_name}). "
+            f"Acilis skoru {top.opening_score}/100, kategori {top.probability_bucket}, son fiyat {top.last_price}, son gunluk degisim %{top.change_percent}, hacim orani {top.daily_volume_ratio}. "
+            f"Acilis tetigi {top.opening_trigger}, iptal seviyesi {top.invalidation_level}, gap riski {top.gap_risk}. "
+            f"Gerekce: {reason_text}."
+        )
+        if risk_text:
+            answer += f" Risk: {risk_text}."
+        if alternates:
+            answer += f" Alternatif adaylar: {alternates}."
+        return AskResponse(
+            question=question,
+            route_type="analysis_query",
+            answer=answer,
+            used_sources=["opening_candidate_scan", "matriks_market_data_tool", "chart_feature_signal_service"],
+            confidence=0.72 if top.probability_bucket == "high" else 0.62,
+            reasoning_summary="Acilis sorusu, kapanis/onceki seans yuzde degisimi, hacim teyidi, 1H/4H teknik durum, spread proxy'si ve gap riski ile ozel opening candidate skoru kullanilarak yanitlandi.",
+            recommendation=None,
+            analysis_evidence=[],
+            citations=[],
+        )
 
     if _is_limit_up_question(question):
         limit_scan = scan_limit_up_candidates(limit=5)
