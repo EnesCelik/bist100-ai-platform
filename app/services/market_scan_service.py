@@ -15,6 +15,8 @@ from app.models.schemas import (
     MarketScanResponse,
     OpeningCandidateItem,
     OpeningCandidateResponse,
+    OpportunityScanItem,
+    OpportunityScanResponse,
     ScanSnapshotCreateResponse,
     ScanSnapshotHistoryItem,
     ScanSnapshotHistoryResponse,
@@ -577,6 +579,134 @@ def _pick_opening_invalidation(daily_chart, intraday_1h, intraday_4h) -> float |
     return None
 
 
+def _is_fresh_matriks_snapshot(market_snapshot) -> bool:
+    return market_snapshot is not None and "matriks" in market_snapshot.source.lower() and "_cache" not in market_snapshot.source.lower()
+
+
+def _opportunity_target_move(scenario: str) -> str:
+    return {
+        "limit_up_candidate": "tavan/sert momentum",
+        "intraday_gain_candidate": "2-3% intraday",
+        "reversal_candidate": "eksiden artiya donus",
+        "breakout_candidate": "kirilim sonrasi ivme",
+        "avoid_or_invalidated": "islemden kacin/teyit bekle",
+    }.get(scenario, "watch")
+
+
+def _scenario_from_components(market_snapshot, daily_chart, intraday_1h, intraday_4h, spread_proxy: str, expected_volume_ratio: float | None) -> tuple[str, list[str], list[str], float]:
+    reasons: list[str] = []
+    risks: list[str] = []
+    change = market_snapshot.change_percent
+    expected_ratio = expected_volume_ratio or 0.0
+    one_h_breakout = intraday_1h.breakout_state if intraday_1h is not None else ""
+    four_h_breakout = intraday_4h.breakout_state if intraday_4h is not None else ""
+    daily_bias = daily_chart.signal_bias if daily_chart is not None else "neutral"
+    intraday_bias = intraday_1h.signal_bias if intraday_1h is not None else "neutral"
+
+    if spread_proxy == "wide_spread":
+        risks.append("Spread genis; emir kalitesi zayif")
+
+    if change >= 3.0 and expected_ratio >= 1.4:
+        reasons.append("Gun ici fiyat ivmesi hacimle destekleniyor")
+        if 3.0 <= change <= 7.5:
+            return "limit_up_candidate", reasons, risks, 78.0
+        risks.append("Fiyat primi yuksek; kovalamaca riski artiyor")
+        return "limit_up_candidate", reasons, risks, 68.0
+
+    if 0.4 <= change < 3.0 and expected_ratio >= 0.8:
+        reasons.append("Pozitif fiyat hareketi zaman ayarli hacimle destekleniyor")
+        if intraday_bias == "bullish":
+            reasons.append("1H teknik bias yukari")
+        return "intraday_gain_candidate", reasons, risks, 64.0
+
+    if -2.5 <= change < 0.4:
+        if expected_ratio >= 0.9 and intraday_bias in {"bullish", "neutral"}:
+            reasons.append("Fiyat zayif/yatay ama hacim akisi toparlanma icin izlenebilir")
+            if one_h_breakout in {"support_test", "breakout_watch_up", "resistance_test"}:
+                reasons.append("1H yapi tepki/kirilim bolgesinde")
+            return "reversal_candidate", reasons, risks, 56.0
+        risks.append("Fiyat zayif ve hacim teyidi yetersiz")
+        return "avoid_or_invalidated", reasons, risks, 30.0
+
+    if one_h_breakout in {"breakout_watch_up", "confirmed_breakout_up", "resistance_test"} or four_h_breakout in {"breakout_watch_up", "confirmed_breakout_up", "resistance_test"}:
+        if expected_ratio >= 0.7 and daily_bias != "bearish":
+            reasons.append("Kirilim bolgesi hacimle izlenebilir")
+            return "breakout_candidate", reasons, risks, 58.0
+
+    risks.append("Senaryo teyidi zayif")
+    return "avoid_or_invalidated", reasons, risks, 25.0
+
+
+def _build_opportunity_item(company) -> OpportunityScanItem | None:
+    market_snapshot = get_market_snapshot(company.ticker, force_refresh=True)
+    if not _is_fresh_matriks_snapshot(market_snapshot):
+        return None
+
+    daily_chart = get_chart_feature_summary(company.ticker, timeframe="1G")
+    intraday_1h = get_chart_feature_summary(company.ticker, timeframe="1H")
+    intraday_4h = get_chart_feature_summary(company.ticker, timeframe="4H")
+    volume_score, daily_volume_ratio, expected_volume_ratio, intraday_volume_ratio, volume_bucket, volume_reasons, volume_risks = _volume_pressure_component(market_snapshot, daily_chart, intraday_1h)
+    technical_score, technical_reasons, technical_risks = _technical_pressure_component(daily_chart, intraday_1h, intraday_4h)
+    liquidity_score, spread, spread_proxy, liquidity_reasons, liquidity_risks = _liquidity_component(market_snapshot)
+    book_score, book_pressure, book_imbalance, book_reasons, book_risks = _order_book_pressure_component(company.ticker)
+    scenario, scenario_reasons, scenario_risks, scenario_base = _scenario_from_components(
+        market_snapshot,
+        daily_chart,
+        intraday_1h,
+        intraday_4h,
+        spread_proxy,
+        expected_volume_ratio,
+    )
+
+    score = scenario_base + (volume_score * 0.42) + (technical_score * 0.35) + (liquidity_score * 0.55) + book_score
+    if scenario == "reversal_candidate":
+        score = min(score, 76.0)
+    if scenario == "avoid_or_invalidated":
+        score = min(score, 42.0)
+    if market_snapshot.change_percent >= 8.5:
+        score -= 8.0
+        scenario_risks.append("Gunluk prim cok yuksek; risk/odul bozulabilir")
+
+    score = _clamp(score, 0.0, 100.0)
+    if score < 38:
+        return None
+
+    reasons = list(dict.fromkeys(scenario_reasons + volume_reasons + technical_reasons + liquidity_reasons + book_reasons))[:7]
+    risks = list(dict.fromkeys(scenario_risks + volume_risks + technical_risks + liquidity_risks + book_risks))[:7]
+    confidence = _clamp(0.35 + (score / 100.0 * 0.45) + (0.1 if expected_volume_ratio and expected_volume_ratio >= 1.0 else 0.0), 0.25, 0.86)
+
+    return OpportunityScanItem(
+        ticker=company.ticker,
+        company_name=company.name,
+        sector=company.sector,
+        scenario=scenario,
+        opportunity_score=round(score, 2),
+        confidence=round(confidence, 2),
+        target_move=_opportunity_target_move(scenario),
+        last_price=market_snapshot.last_price,
+        change_percent=market_snapshot.change_percent,
+        distance_to_limit_percent=round(max(0.0, 10.0 - market_snapshot.change_percent), 2),
+        volume=market_snapshot.volume,
+        daily_volume_ratio=daily_volume_ratio,
+        expected_volume_ratio=expected_volume_ratio,
+        volume_momentum_bucket=volume_bucket,
+        technical_bias=daily_chart.signal_bias if daily_chart is not None else None,
+        intraday_bias_1h=intraday_1h.signal_bias if intraday_1h is not None else None,
+        intraday_bias_4h=intraday_4h.signal_bias if intraday_4h is not None else None,
+        breakout_state_1h=intraday_1h.breakout_state if intraday_1h is not None else None,
+        breakout_state_4h=intraday_4h.breakout_state if intraday_4h is not None else None,
+        spread_percent=spread,
+        order_flow_proxy=spread_proxy,
+        order_book_pressure=book_pressure,
+        bid_ask_imbalance=book_imbalance,
+        trigger_price=_pick_opening_trigger(daily_chart, intraday_1h, intraday_4h),
+        invalidation_price=_pick_opening_invalidation(daily_chart, intraday_1h, intraday_4h),
+        why_now=reasons,
+        risks=risks,
+        data_quality="fresh_matriks",
+    )
+
+
 def _build_opening_candidate(company) -> tuple[OpeningCandidateItem | None, bool]:
     market_snapshot = get_market_snapshot(company.ticker, force_refresh=True)
     if market_snapshot is None:
@@ -1133,6 +1263,52 @@ def scan_opening_candidates(limit: int = 15) -> OpeningCandidateResponse:
         universe_size=len(companies),
         total=len(limited_items),
         excluded_already_limit_count=excluded_already_limit_count,
+        items=limited_items,
+    )
+
+
+def scan_opportunities(limit: int = 15, include_avoid: bool = False) -> OpportunityScanResponse:
+    companies = list_company_records(universe_code="bist100")
+    if not companies:
+        companies = list_company_records()
+
+    opportunities: list[OpportunityScanItem] = []
+    for company in companies:
+        item = _build_opportunity_item(company)
+        if item is None:
+            continue
+        if not include_avoid and item.scenario == "avoid_or_invalidated":
+            continue
+        opportunities.append(item)
+
+    scenario_priority = {
+        "limit_up_candidate": 4,
+        "intraday_gain_candidate": 3,
+        "breakout_candidate": 3,
+        "reversal_candidate": 2,
+        "avoid_or_invalidated": 0,
+    }
+    ranked = sorted(
+        opportunities,
+        key=lambda item: (
+            item.opportunity_score,
+            scenario_priority.get(item.scenario, 1),
+            item.expected_volume_ratio or 0,
+            item.change_percent or -999,
+            item.volume or 0,
+        ),
+        reverse=True,
+    )
+    limited_items = ranked[: max(limit, 1)]
+    scenario_counts: dict[str, int] = {}
+    for item in limited_items:
+        scenario_counts[item.scenario] = scenario_counts.get(item.scenario, 0) + 1
+
+    return OpportunityScanResponse(
+        generated_at=datetime.utcnow().isoformat(),
+        universe_size=len(companies),
+        total=len(limited_items),
+        scenario_counts=scenario_counts,
         items=limited_items,
     )
 

@@ -401,6 +401,45 @@ class OpeningCandidateResponse(BaseModel):
     items: list[OpeningCandidateItem] = Field(description="Ranked next-session opening candidate items")
 
 
+class OpportunityScanItem(BaseModel):
+    ticker: str = Field(description="BIST ticker code", examples=["MGROS"])
+    company_name: str = Field(description="Company name")
+    sector: str = Field(description="Sector name")
+    scenario: str = Field(description="Detected opportunity scenario", examples=["intraday_gain_candidate"])
+    opportunity_score: float = Field(description="0-100 scenario-aware opportunity score", examples=[78.5])
+    confidence: float = Field(description="0-1 confidence score", examples=[0.68])
+    target_move: str = Field(description="Expected move style", examples=["2-3% intraday"])
+    last_price: float | None = Field(default=None, description="Latest traded price")
+    change_percent: float | None = Field(default=None, description="Daily percentage change")
+    distance_to_limit_percent: float | None = Field(default=None, description="Approximate remaining distance to +10% limit")
+    volume: int | None = Field(default=None, description="Latest traded volume")
+    daily_volume_ratio: float | None = Field(default=None, description="Current volume divided by average daily volume")
+    expected_volume_ratio: float | None = Field(default=None, description="Time-adjusted current volume divided by expected volume")
+    volume_momentum_bucket: str | None = Field(default=None, description="Time-adjusted volume momentum bucket")
+    technical_bias: str | None = Field(default=None, description="Daily technical bias")
+    intraday_bias_1h: str | None = Field(default=None, description="1H technical bias")
+    intraday_bias_4h: str | None = Field(default=None, description="4H technical bias")
+    breakout_state_1h: str | None = Field(default=None, description="1H breakout state")
+    breakout_state_4h: str | None = Field(default=None, description="4H breakout state")
+    spread_percent: float | None = Field(default=None, description="Best ask/bid spread percentage when available")
+    order_flow_proxy: str | None = Field(default=None, description="Spread-derived order flow proxy")
+    order_book_pressure: str | None = Field(default=None, description="Depth/order book pressure bucket when available")
+    bid_ask_imbalance: float | None = Field(default=None, description="Visible bid/ask quantity imbalance when available")
+    trigger_price: float | None = Field(default=None, description="Price level that confirms the scenario")
+    invalidation_price: float | None = Field(default=None, description="Price level that weakens or invalidates the scenario")
+    why_now: list[str] = Field(description="Reasons supporting the scenario")
+    risks: list[str] = Field(description="Risks or invalidation notes")
+    data_quality: str = Field(description="Freshness/source quality label", examples=["fresh_matriks"])
+
+
+class OpportunityScanResponse(BaseModel):
+    generated_at: str = Field(description="Scan generation timestamp", examples=["2026-05-13T14:15:00"])
+    universe_size: int = Field(description="Number of companies scanned", examples=[85])
+    total: int = Field(description="Number of returned opportunities", examples=[10])
+    scenario_counts: dict[str, int] = Field(description="Returned scenario distribution")
+    items: list[OpportunityScanItem] = Field(description="Ranked opportunity scan items")
+
+
 class AskRequest(BaseModel):
     question: str = Field(
         description="User question for the assistant",
