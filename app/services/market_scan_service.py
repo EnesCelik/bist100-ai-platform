@@ -180,9 +180,12 @@ def _change_runway_component(change_percent: float | None) -> tuple[float, list[
         reasons.append("Tavana yakin momentum var")
         risks.append("Yuksek yuzde nedeniyle kovalamaca riski artiyor")
         return 11.0, reasons, risks
-    if -1.0 <= change_percent < 1.0:
+    if 0.0 <= change_percent < 1.0:
         reasons.append("Gunun geri kalani icin hala hareket alani var")
         return 5.0, reasons, risks
+    if -1.0 <= change_percent < 0.0:
+        risks.append("Gun ici fiyat henuz pozitife donmedi")
+        return -2.0, reasons, risks
     risks.append("Gun ici performans tavan kosusu icin henuz zayif")
     return -4.0, reasons, risks
 
@@ -347,14 +350,17 @@ def _opening_change_component(change_percent: float | None) -> tuple[float, list
         reasons.append("Guclu momentum var")
         risks.append("Yuksek kapanis primi nedeniyle gap/kovalama riski artiyor")
         return 8.0, reasons, risks, False
-    if -0.8 <= change_percent < 1.0:
+    if 0.0 <= change_percent < 1.0:
         reasons.append("Yatay kapanis, ertesi seans kirilim icin hareket alani birakiyor")
         return 7.0, reasons, risks, False
+    if -0.8 <= change_percent < 0.0:
+        risks.append("Acilis sonrasi fiyat henuz pozitife donmedi")
+        return -2.0, reasons, risks, False
     if -2.5 <= change_percent < -0.8:
-        risks.append("Onceki seans zayif kapanis var")
-        return -4.0, reasons, risks, False
-    risks.append("Onceki seans satis baskisi belirgin")
-    return -10.0, reasons, risks, False
+        risks.append("Acilis teyidi zayif; fiyat negatif bolgeye dondu")
+        return -14.0, reasons, risks, False
+    risks.append("Acilis teyidi bozuldu; satis baskisi belirgin")
+    return -26.0, reasons, risks, False
 
 
 def _opening_volume_component(market_snapshot, daily_chart) -> tuple[float, float | None, list[str], list[str]]:
@@ -479,6 +485,10 @@ def _build_opening_candidate(company) -> tuple[OpeningCandidateItem | None, bool
         0.0,
         100.0,
     )
+    if market_snapshot.change_percent < -1.0:
+        score = min(score, 49.0)
+    elif market_snapshot.change_percent < 0.0:
+        score = min(score, 54.0)
     if score < 44:
         return None, False
 
@@ -516,6 +526,8 @@ def _build_limit_up_candidate(company) -> tuple[LimitUpCandidateItem | None, boo
     if market_snapshot is None:
         return None, False
 
+    if market_snapshot.change_percent < 0:
+        return None, False
     if market_snapshot.change_percent >= 9.3:
         return None, True
 
