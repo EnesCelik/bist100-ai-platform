@@ -1,4 +1,5 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 
@@ -161,6 +162,59 @@ def _trade_calibration_rank_component(trade_calibration) -> float:
     return round(component, 3)
 
 
+def _market_elapsed_fraction(now: datetime | None = None) -> float:
+    current = now.astimezone(ZoneInfo("Europe/Istanbul")) if now is not None else datetime.now(ZoneInfo("Europe/Istanbul"))
+    session_start = current.replace(hour=9, minute=55, second=0, microsecond=0)
+    session_end = current.replace(hour=18, minute=10, second=0, microsecond=0)
+    if current <= session_start:
+        return 0.08
+    if current >= session_end:
+        return 1.0
+    elapsed = (current - session_start).total_seconds()
+    total = max((session_end - session_start).total_seconds(), 1)
+    # Opening and closing auctions concentrate volume, so early-session expected volume
+    # should not be interpreted linearly.
+    return _clamp((elapsed / total) ** 0.72, 0.08, 1.0)
+
+
+def _volume_momentum_bucket(expected_volume_ratio: float | None, intraday_ratio: float | None) -> str:
+    best_ratio = max(expected_volume_ratio or 0.0, intraday_ratio or 0.0)
+    if best_ratio >= 2.5:
+        return "volume_surge"
+    if best_ratio >= 1.5:
+        return "strong_volume"
+    if best_ratio >= 0.9:
+        return "healthy_volume"
+    if best_ratio >= 0.55:
+        return "thin_volume"
+    return "very_thin_volume"
+
+
+def _confirmation_component(change_percent: float | None, expected_volume_ratio: float | None, intraday_ratio: float | None) -> tuple[float, str, list[str], list[str]]:
+    reasons: list[str] = []
+    risks: list[str] = []
+    bucket = _volume_momentum_bucket(expected_volume_ratio, intraday_ratio)
+    change = change_percent or 0.0
+    best_ratio = max(expected_volume_ratio or 0.0, intraday_ratio or 0.0)
+
+    if change >= 2.0 and best_ratio >= 1.5:
+        reasons.append("Fiyat artisi hacimle teyit ediliyor")
+        return 10.0, bucket, reasons, risks
+    if change >= 0.8 and best_ratio >= 0.9:
+        reasons.append("Pozitif fiyat hareketi hacimle destekleniyor")
+        return 5.0, bucket, reasons, risks
+    if change >= 0.0 and best_ratio < 0.55:
+        risks.append("Pozitif/yatay fiyat hareketinde hacim teyidi zayif")
+        return -4.0, bucket, reasons, risks
+    if change < 0.0 and best_ratio >= 1.0:
+        risks.append("Hacim artarken fiyat negatif; satis baskisi teyidi olabilir")
+        return -10.0, bucket, reasons, risks
+    if change < 0.0:
+        risks.append("Fiyat negatif bolgede, momentum teyidi yok")
+        return -6.0, bucket, reasons, risks
+    return 0.0, bucket, reasons, risks
+
+
 
 def _change_runway_component(change_percent: float | None) -> tuple[float, list[str], list[str]]:
     reasons: list[str] = []
@@ -190,23 +244,38 @@ def _change_runway_component(change_percent: float | None) -> tuple[float, list[
     return -4.0, reasons, risks
 
 
-def _volume_pressure_component(market_snapshot, daily_chart, intraday_1h) -> tuple[float, float | None, float | None, list[str], list[str]]:
+def _volume_pressure_component(market_snapshot, daily_chart, intraday_1h) -> tuple[float, float | None, float | None, float | None, str, list[str], list[str]]:
     reasons: list[str] = []
     risks: list[str] = []
     daily_ratio = None
+    expected_ratio = None
     intraday_ratio = None
     score = 0.0
 
     if market_snapshot is not None and daily_chart is not None and daily_chart.avg_volume > 0:
         daily_ratio = round(market_snapshot.volume / max(daily_chart.avg_volume, 1), 2)
+        expected_ratio = round(daily_ratio / _market_elapsed_fraction(), 2)
+        if expected_ratio >= 2.5:
+            score += 18.0
+            reasons.append("Zamana gore hacim akisi cok guclu")
+        elif expected_ratio >= 1.5:
+            score += 12.0
+            reasons.append("Zamana gore hacim akisi guclu")
+        elif expected_ratio >= 0.9:
+            score += 6.0
+            reasons.append("Zamana gore hacim akisi saglikli")
+        elif expected_ratio < 0.55:
+            score -= 9.0
+            risks.append("Zamana gore hacim teyidi zayif")
+
         if daily_ratio >= 2.0:
-            score += 20.0
+            score += 14.0
             reasons.append("Gunluk hacim ortalamanin cok uzerinde")
         elif daily_ratio >= 1.35:
-            score += 13.0
+            score += 9.0
             reasons.append("Gunluk hacim ortalamanin belirgin uzerinde")
         elif daily_ratio >= 1.0:
-            score += 7.0
+            score += 5.0
             reasons.append("Gunluk hacim ortalama ustunde")
         elif daily_ratio < 0.75:
             score -= 8.0
@@ -224,7 +293,16 @@ def _volume_pressure_component(market_snapshot, daily_chart, intraday_1h) -> tup
             score -= 6.0
             risks.append("1H hacim ivmesi zayif")
 
-    return score, daily_ratio, intraday_ratio, reasons, risks
+    confirmation_score, momentum_bucket, confirmation_reasons, confirmation_risks = _confirmation_component(
+        market_snapshot.change_percent if market_snapshot is not None else None,
+        expected_ratio,
+        intraday_ratio,
+    )
+    score += confirmation_score
+    reasons.extend(confirmation_reasons)
+    risks.extend(confirmation_risks)
+
+    return score, daily_ratio, expected_ratio, intraday_ratio, momentum_bucket, reasons, risks
 
 
 def _technical_pressure_component(daily_chart, intraday_1h, intraday_4h) -> tuple[float, list[str], list[str]]:
@@ -381,22 +459,50 @@ def _opening_change_component(change_percent: float | None) -> tuple[float, list
     return -26.0, reasons, risks, False
 
 
-def _opening_volume_component(market_snapshot, daily_chart) -> tuple[float, float | None, list[str], list[str]]:
+def _opening_volume_component(market_snapshot, daily_chart) -> tuple[float, float | None, float | None, str, list[str], list[str]]:
     reasons: list[str] = []
     risks: list[str] = []
     if market_snapshot is None or daily_chart is None or daily_chart.avg_volume <= 0:
-        return 0.0, None, reasons, ["Hacim ortalamasi okunamadi"]
+        return 0.0, None, None, "unknown", reasons, ["Hacim ortalamasi okunamadi"]
 
     ratio = round(market_snapshot.volume / max(daily_chart.avg_volume, 1), 2)
+    expected_ratio = round(ratio / _market_elapsed_fraction(), 2)
+    score = 0.0
+    if expected_ratio >= 2.5:
+        score += 18.0
+        reasons.append("Zamana gore hacim akisi cok guclu")
+    elif expected_ratio >= 1.5:
+        score += 12.0
+        reasons.append("Zamana gore hacim akisi guclu")
+    elif expected_ratio >= 0.9:
+        score += 6.0
+        reasons.append("Zamana gore hacim akisi saglikli")
+    elif expected_ratio < 0.55:
+        score -= 10.0
+        risks.append("Zamana gore hacim teyidi zayif")
+
     if ratio >= 2.0:
-        return 20.0, ratio, ["Kapanis hacmi ortalamanin cok uzerinde"], risks
-    if ratio >= 1.35:
-        return 14.0, ratio, ["Kapanis hacmi ortalamanin belirgin uzerinde"], risks
-    if ratio >= 1.0:
-        return 7.0, ratio, ["Kapanis hacmi ortalama ustunde"], risks
-    if ratio < 0.65:
-        return -9.0, ratio, reasons, ["Kapanis hacmi teyidi zayif"]
-    return 0.0, ratio, reasons, risks
+        score += 12.0
+        reasons.append("Toplam hacim ortalamanin cok uzerinde")
+    elif ratio >= 1.35:
+        score += 8.0
+        reasons.append("Toplam hacim ortalamanin belirgin uzerinde")
+    elif ratio >= 1.0:
+        score += 4.0
+        reasons.append("Toplam hacim ortalama ustunde")
+    elif ratio < 0.65:
+        score -= 5.0
+        risks.append("Toplam hacim teyidi zayif")
+
+    confirmation_score, momentum_bucket, confirmation_reasons, confirmation_risks = _confirmation_component(
+        market_snapshot.change_percent,
+        expected_ratio,
+        None,
+    )
+    score += confirmation_score
+    reasons.extend(confirmation_reasons)
+    risks.extend(confirmation_risks)
+    return score, ratio, expected_ratio, momentum_bucket, reasons, risks
 
 
 def _opening_technical_component(daily_chart, intraday_1h, intraday_4h) -> tuple[float, list[str], list[str]]:
@@ -485,7 +591,7 @@ def _build_opening_candidate(company) -> tuple[OpeningCandidateItem | None, bool
     intraday_4h = get_chart_feature_summary(company.ticker, timeframe="4H")
     trade_calibration = get_trade_calibration_cached(company.ticker, timeframe="1G", horizon_bars=5, sample_size=8, step_bars=5, use_cache_only=True)
 
-    volume_score, daily_volume_ratio, volume_reasons, volume_risks = _opening_volume_component(market_snapshot, daily_chart)
+    volume_score, daily_volume_ratio, expected_volume_ratio, volume_momentum_bucket, volume_reasons, volume_risks = _opening_volume_component(market_snapshot, daily_chart)
     technical_score, technical_reasons, technical_risks = _opening_technical_component(daily_chart, intraday_1h, intraday_4h)
     liquidity_score, spread, order_proxy, liquidity_reasons, liquidity_risks = _liquidity_component(market_snapshot)
     book_score, book_pressure, book_imbalance, book_reasons, book_risks = _order_book_pressure_component(company.ticker)
@@ -525,6 +631,8 @@ def _build_opening_candidate(company) -> tuple[OpeningCandidateItem | None, bool
         change_percent=market_snapshot.change_percent,
         volume=market_snapshot.volume,
         daily_volume_ratio=daily_volume_ratio,
+        expected_volume_ratio=expected_volume_ratio,
+        volume_momentum_bucket=volume_momentum_bucket,
         closing_strength_proxy=closing_strength,
         technical_bias=daily_chart.signal_bias if daily_chart is not None else None,
         intraday_bias_1h=intraday_1h.signal_bias if intraday_1h is not None else None,
@@ -558,7 +666,7 @@ def _build_limit_up_candidate(company) -> tuple[LimitUpCandidateItem | None, boo
     intraday_4h = get_chart_feature_summary(company.ticker, timeframe="4H")
 
     change_score, change_reasons, change_risks = _change_runway_component(market_snapshot.change_percent)
-    volume_score, daily_volume_ratio, intraday_volume_ratio, volume_reasons, volume_risks = _volume_pressure_component(market_snapshot, daily_chart, intraday_1h)
+    volume_score, daily_volume_ratio, expected_volume_ratio, intraday_volume_ratio, volume_momentum_bucket, volume_reasons, volume_risks = _volume_pressure_component(market_snapshot, daily_chart, intraday_1h)
     technical_score, technical_reasons, technical_risks = _technical_pressure_component(daily_chart, intraday_1h, intraday_4h)
     liquidity_score, spread, order_proxy, liquidity_reasons, liquidity_risks = _liquidity_component(market_snapshot)
     book_score, book_pressure, book_imbalance, book_reasons, book_risks = _order_book_pressure_component(company.ticker)
@@ -581,7 +689,9 @@ def _build_limit_up_candidate(company) -> tuple[LimitUpCandidateItem | None, boo
         distance_to_limit_percent=round(max(0.0, 10.0 - market_snapshot.change_percent), 2),
         volume=market_snapshot.volume,
         daily_volume_ratio=daily_volume_ratio,
+        expected_volume_ratio=expected_volume_ratio,
         intraday_volume_ratio_1h=intraday_volume_ratio,
+        volume_momentum_bucket=volume_momentum_bucket,
         technical_bias=daily_chart.signal_bias if daily_chart is not None else None,
         intraday_bias_1h=intraday_1h.signal_bias if intraday_1h is not None else None,
         breakout_state_1h=intraday_1h.breakout_state if intraday_1h is not None else None,
