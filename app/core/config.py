@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     database_echo: bool = False
     market_data_provider: str = "mock"
     yahoo_timeout_seconds: float = 8.0
-    market_snapshot_max_age_minutes: int = 20
+    market_snapshot_max_age_minutes: int = 2
     ohlcv_cache_max_age_minutes_1h: int = 45
     ohlcv_cache_max_age_minutes_4h: int = 90
     ohlcv_cache_max_age_minutes_1g: int = 360

@@ -158,6 +158,8 @@ def get_cached_ohlcv(
         cutoff = datetime.utcnow() - timedelta(minutes=max(max_age_minutes, 0))
         if latest_row.updated_at < cutoff:
             return None
+    if _is_latest_bar_stale(normalized_timeframe, latest_row.timestamp):
+        return None
     ordered = list(reversed(rows))
     candles = [
         OHLCVBar(
@@ -177,6 +179,23 @@ def get_cached_ohlcv(
         candles=candles,
         source=f"{ordered[-1].source}_cache",
     )
+
+
+def _is_latest_bar_stale(timeframe: str, latest_timestamp: datetime | None) -> bool:
+    if latest_timestamp is None:
+        return True
+    latest = latest_timestamp
+    if latest.tzinfo is None:
+        latest = latest.replace(tzinfo=UTC)
+    now = datetime.now(UTC)
+    max_age_by_timeframe = {
+        "1H": timedelta(days=2),
+        "4H": timedelta(days=3),
+        "1G": timedelta(days=5),
+        "1W": timedelta(days=21),
+    }
+    max_age = max_age_by_timeframe.get(timeframe.upper())
+    return max_age is not None and latest < now - max_age
 
 
 def get_market_data_debug(ticker: str, timeframe: str = "1G") -> MarketDataDebugResponse:

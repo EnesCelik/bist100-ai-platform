@@ -772,10 +772,14 @@ def get_market_snapshot(ticker: str, force_refresh: bool = False) -> MarketDataR
 
     payload = _fetch_quote_payload(ticker)
     if payload is None:
+        if force_refresh:
+            return None
         return get_cached_market_snapshot(ticker)
 
     snapshot = _map_quote_payload(ticker, payload)
     if snapshot is None:
+        if force_refresh:
+            return None
         return get_cached_market_snapshot(ticker)
 
     save_market_snapshot(snapshot)

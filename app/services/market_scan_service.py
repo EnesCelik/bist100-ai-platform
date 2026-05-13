@@ -578,8 +578,10 @@ def _pick_opening_invalidation(daily_chart, intraday_1h, intraday_4h) -> float |
 
 
 def _build_opening_candidate(company) -> tuple[OpeningCandidateItem | None, bool]:
-    market_snapshot = get_market_snapshot(company.ticker)
+    market_snapshot = get_market_snapshot(company.ticker, force_refresh=True)
     if market_snapshot is None:
+        return None, False
+    if "matriks" not in market_snapshot.source.lower():
         return None, False
 
     change_score, change_reasons, change_risks, already_limit = _opening_change_component(market_snapshot.change_percent)
@@ -652,8 +654,10 @@ def _build_opening_candidate(company) -> tuple[OpeningCandidateItem | None, bool
 
 
 def _build_limit_up_candidate(company) -> tuple[LimitUpCandidateItem | None, bool]:
-    market_snapshot = get_market_snapshot(company.ticker)
+    market_snapshot = get_market_snapshot(company.ticker, force_refresh=True)
     if market_snapshot is None:
+        return None, False
+    if "matriks" not in market_snapshot.source.lower():
         return None, False
 
     if market_snapshot.change_percent < 0:
