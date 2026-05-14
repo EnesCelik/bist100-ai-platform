@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 
+from app.core.config import settings
 from app.data_sources.market_data.provider import get_market_snapshot
 from app.db.models import PaperTrade
 from app.db.session import SessionLocal, ensure_runtime_schema
@@ -150,9 +151,9 @@ def _create_trade_from_opportunity(item: OpportunityScanItem) -> PaperTrade | No
     )
 
 
-def open_top_opportunity_trades(limit: int = 5, min_score: float = 70.0) -> PaperTradeOpenResponse:
+def open_top_opportunity_trades(limit: int = 5, min_score: float = 70.0, max_open_trades: int | None = None) -> PaperTradeOpenResponse:
     ensure_runtime_schema()
-    scan = scan_opportunities(limit=max(limit * 3, limit), include_avoid=False)
+    max_open = max(max_open_trades if max_open_trades is not None else settings.scheduler_paper_trade_max_open_trades, 1)
 
     opened_rows: list[PaperTrade] = []
     skipped_count = 0
@@ -163,9 +164,22 @@ def open_top_opportunity_trades(limit: int = 5, min_score: float = 70.0) -> Pape
                 select(PaperTrade.ticker).where(PaperTrade.status == "open")
             ).all()
         }
+        open_capacity = max(max_open - len(open_tickers), 0)
+        effective_limit = min(max(limit, 1), open_capacity)
+
+        if effective_limit <= 0:
+            return PaperTradeOpenResponse(
+                opened_count=0,
+                skipped_count=0,
+                open_trade_count=len(open_tickers),
+                tickers=[],
+                items=[],
+            )
+
+        scan = scan_opportunities(limit=max(effective_limit * 3, effective_limit), include_avoid=False)
 
         for item in scan.items:
-            if len(opened_rows) >= limit:
+            if len(opened_rows) >= effective_limit:
                 break
             if item.opportunity_score < min_score:
                 skipped_count += 1
@@ -326,9 +340,9 @@ def get_daily_paper_trade_report(trade_date: str | None = None) -> PaperTradeDai
     )
 
 
-def run_paper_trade_cycle(open_limit: int = 5, min_score: float = 70.0) -> dict:
+def run_paper_trade_cycle(open_limit: int = 5, min_score: float = 70.0, max_open_trades: int | None = None) -> dict:
     monitor_result = monitor_open_trades()
-    open_result = open_top_opportunity_trades(limit=open_limit, min_score=min_score) if is_market_session() else None
+    open_result = open_top_opportunity_trades(limit=open_limit, min_score=min_score, max_open_trades=max_open_trades) if is_market_session() else None
     return {
         "monitor_checked_count": monitor_result.checked_count,
         "monitor_updated_count": monitor_result.updated_count,

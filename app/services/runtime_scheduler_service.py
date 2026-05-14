@@ -158,6 +158,7 @@ def _run_paper_trade_once() -> None:
             result = run_paper_trade_cycle(
                 open_limit=max(settings.scheduler_paper_trade_open_limit, 1),
                 min_score=settings.scheduler_paper_trade_min_score,
+                max_open_trades=settings.scheduler_paper_trade_max_open_trades,
             )
             message = (
                 f"monitor_checked={result['monitor_checked_count']}, "

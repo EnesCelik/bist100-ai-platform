@@ -22,8 +22,9 @@ router = APIRouter(tags=["paper-trades"])
 def open_top_paper_trades(
     limit: int = Query(default=5, ge=1, le=20),
     min_score: float = Query(default=70.0, ge=0.0, le=100.0),
+    max_open_trades: int | None = Query(default=None, ge=1, le=50),
 ) -> PaperTradeOpenResponse:
-    return open_top_opportunity_trades(limit=limit, min_score=min_score)
+    return open_top_opportunity_trades(limit=limit, min_score=min_score, max_open_trades=max_open_trades)
 
 
 @router.post("/simulation/tick", response_model=PaperTradeMonitorResponse)
