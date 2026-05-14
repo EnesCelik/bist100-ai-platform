@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Query
 
 from app.models.schemas import (
+    ManualBasketCreateRequest,
     PaperTradeDailyReportResponse,
     PaperTradeFinalizeResponse,
     PaperTradeHistoryResponse,
@@ -8,6 +9,7 @@ from app.models.schemas import (
     PaperTradeOpenResponse,
 )
 from app.services.paper_trade_simulation_service import (
+    create_manual_basket,
     finalize_open_trades,
     get_daily_paper_trade_report,
     get_paper_trades,
@@ -27,6 +29,11 @@ def open_top_paper_trades(
     return open_top_opportunity_trades(limit=limit, min_score=min_score, max_open_trades=max_open_trades)
 
 
+@router.post("/simulation/manual-basket", response_model=PaperTradeOpenResponse)
+def create_manual_paper_basket(payload: ManualBasketCreateRequest) -> PaperTradeOpenResponse:
+    return create_manual_basket(payload)
+
+
 @router.post("/simulation/tick", response_model=PaperTradeMonitorResponse)
 def tick_paper_trades() -> PaperTradeMonitorResponse:
     return monitor_open_trades()
@@ -41,12 +48,14 @@ def finalize_paper_trade_day() -> PaperTradeFinalizeResponse:
 def list_paper_trades(
     limit: int = Query(default=50, ge=1, le=200),
     status: str | None = Query(default=None),
+    strategy_name: str | None = Query(default=None),
 ) -> PaperTradeHistoryResponse:
-    return get_paper_trades(limit=limit, status=status)
+    return get_paper_trades(limit=limit, status=status, strategy_name=strategy_name)
 
 
 @router.get("/simulation/report/daily", response_model=PaperTradeDailyReportResponse)
 def get_daily_report(
     trade_date: str | None = Query(default=None),
+    strategy_name: str | None = Query(default=None),
 ) -> PaperTradeDailyReportResponse:
-    return get_daily_paper_trade_report(trade_date=trade_date)
+    return get_daily_paper_trade_report(trade_date=trade_date, strategy_name=strategy_name)

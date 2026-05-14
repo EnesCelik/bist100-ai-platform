@@ -132,6 +132,21 @@ def ensure_runtime_schema() -> None:
                     "ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS protected_stop_price FLOAT"
                 )
             )
+            connection.execute(
+                text(
+                    "ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS strategy_name VARCHAR(64) DEFAULT 'auto_opportunity'"
+                )
+            )
+            connection.execute(
+                text(
+                    "ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS capital_allocated FLOAT DEFAULT 0.0"
+                )
+            )
+            connection.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_paper_trades_strategy_name ON paper_trades (strategy_name)"
+                )
+            )
 
         _schema_initialized = True
 

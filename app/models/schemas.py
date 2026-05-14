@@ -989,6 +989,7 @@ class PaperTradeItem(BaseModel):
     ticker: str = Field(description="BIST ticker code", examples=["MGROS"])
     company_name: str = Field(description="Company name")
     sector: str = Field(description="Sector")
+    strategy_name: str = Field(description="Strategy/source bucket", examples=["manual_morning_basket"])
     scenario: str = Field(description="Opportunity scenario", examples=["intraday_gain_candidate"])
     status: str = Field(description="Trade status", examples=["open"])
     outcome: str = Field(description="Trade outcome", examples=["open"])
@@ -996,6 +997,7 @@ class PaperTradeItem(BaseModel):
     confidence: float = Field(description="Original opportunity confidence", examples=[0.72])
     data_quality: str = Field(description="Source/freshness label", examples=["fresh_matriks"])
     entry_price: float = Field(description="Paper entry price", examples=[100.0])
+    capital_allocated: float = Field(description="Simulated capital allocated to this trade", examples=[20000.0])
     current_price: float = Field(description="Latest checked price", examples=[102.5])
     max_seen_price: float = Field(description="Best seen price after entry", examples=[103.0])
     min_seen_price: float = Field(description="Worst seen price after entry", examples=[98.8])
@@ -1051,6 +1053,7 @@ class PaperTradeHistoryResponse(BaseModel):
 
 class PaperTradeDailyReportResponse(BaseModel):
     trade_date: str = Field(description="Report date", examples=["2026-05-13"])
+    strategy_name: str | None = Field(default=None, description="Optional strategy filter")
     total_trades: int = Field(description="Number of trades opened that day", examples=[5])
     open_count: int = Field(description="Still open trades")
     finalized_count: int = Field(description="Finalized trades")
@@ -1067,6 +1070,18 @@ class PaperTradeDailyReportResponse(BaseModel):
     worst_scenario: str | None = Field(default=None, description="Worst average max-return scenario")
     scenario_counts: dict[str, int] = Field(default_factory=dict, description="Scenario distribution")
     summary: str = Field(description="Human-readable report summary")
+
+
+class ManualBasketPositionRequest(BaseModel):
+    ticker: str = Field(description="BIST ticker code", examples=["MGROS"])
+    entry_price: float = Field(description="Manual simulated entry price", gt=0)
+    capital_allocated: float = Field(description="Capital allocated to this position", gt=0)
+    scenario: str = Field(default="manual_basket", description="Manual scenario label")
+
+
+class ManualBasketCreateRequest(BaseModel):
+    strategy_name: str = Field(default="manual_morning_basket", description="Manual basket strategy name")
+    positions: list[ManualBasketPositionRequest] = Field(description="Manual basket positions")
 
 
 class AnalysisRunHistoryResponse(BaseModel):

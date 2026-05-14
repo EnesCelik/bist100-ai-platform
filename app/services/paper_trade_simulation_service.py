@@ -18,6 +18,7 @@ from app.models.schemas import (
     PaperTradeItem,
     PaperTradeMonitorResponse,
     PaperTradeOpenResponse,
+    ManualBasketCreateRequest,
 )
 from app.services.market_scan_service import scan_opportunities
 
@@ -58,6 +59,7 @@ def _trade_item(row: PaperTrade) -> PaperTradeItem:
         ticker=row.ticker,
         company_name=row.company_name,
         sector=row.sector,
+        strategy_name=row.strategy_name,
         scenario=row.scenario,
         status=row.status,
         outcome=row.outcome,
@@ -65,6 +67,7 @@ def _trade_item(row: PaperTrade) -> PaperTradeItem:
         confidence=float(row.confidence),
         data_quality=row.data_quality,
         entry_price=float(row.entry_price),
+        capital_allocated=float(row.capital_allocated),
         current_price=float(row.current_price),
         max_seen_price=float(row.max_seen_price),
         min_seen_price=float(row.min_seen_price),
@@ -104,7 +107,9 @@ def _update_trade_with_price(row: PaperTrade, price: float, checked_at: datetime
     row.hit_3_percent = bool(row.hit_3_percent or row.max_seen_price >= row.target_2_price)
     row.hit_limit_up = bool(row.hit_limit_up or row.max_intraday_return_percent >= 9.8)
     _apply_profit_protection(row)
-    row.stop_hit = bool(row.stop_hit or row.min_seen_price <= row.stop_price)
+    # Once profit protection raises the stop above entry, historical min_seen_price
+    # can sit below the new stop. Only current/future checks should trigger it.
+    row.stop_hit = bool(row.stop_hit or price <= row.stop_price)
     row.last_checked_at = checked
 
 
@@ -157,6 +162,7 @@ def _create_trade_from_opportunity(item: OpportunityScanItem) -> PaperTrade | No
         ticker=item.ticker,
         company_name=item.company_name,
         sector=item.sector,
+        strategy_name="auto_opportunity",
         scenario=item.scenario,
         status="open",
         outcome="open",
@@ -164,6 +170,7 @@ def _create_trade_from_opportunity(item: OpportunityScanItem) -> PaperTrade | No
         confidence=item.confidence,
         data_quality=item.data_quality,
         entry_price=entry_price,
+        capital_allocated=0.0,
         current_price=entry_price,
         max_seen_price=entry_price,
         min_seen_price=entry_price,
@@ -308,24 +315,31 @@ def finalize_open_trades() -> PaperTradeFinalizeResponse:
     )
 
 
-def get_paper_trades(limit: int = 50, status: str | None = None) -> PaperTradeHistoryResponse:
+def get_paper_trades(limit: int = 50, status: str | None = None, strategy_name: str | None = None) -> PaperTradeHistoryResponse:
     ensure_runtime_schema()
     normalized_status = status.lower().strip() if status else None
+    normalized_strategy = strategy_name.strip() if strategy_name else None
     with SessionLocal() as session:
         statement = select(PaperTrade)
         if normalized_status:
             statement = statement.where(PaperTrade.status == normalized_status)
+        if normalized_strategy:
+            statement = statement.where(PaperTrade.strategy_name == normalized_strategy)
         rows = session.execute(statement.order_by(PaperTrade.opened_at.desc()).limit(max(limit, 1))).scalars().all()
         items = [_trade_item(row) for row in rows]
     return PaperTradeHistoryResponse(total=len(items), items=items)
 
 
-def get_daily_paper_trade_report(trade_date: str | None = None) -> PaperTradeDailyReportResponse:
+def get_daily_paper_trade_report(trade_date: str | None = None, strategy_name: str | None = None) -> PaperTradeDailyReportResponse:
     ensure_runtime_schema()
     report_date = trade_date or _istanbul_now().date().isoformat()
+    normalized_strategy = strategy_name.strip() if strategy_name else None
 
     with SessionLocal() as session:
-        rows = session.execute(select(PaperTrade).order_by(PaperTrade.opened_at.desc())).scalars().all()
+        statement = select(PaperTrade)
+        if normalized_strategy:
+            statement = statement.where(PaperTrade.strategy_name == normalized_strategy)
+        rows = session.execute(statement.order_by(PaperTrade.opened_at.desc())).scalars().all()
 
     items = [
         _trade_item(row)
@@ -363,6 +377,7 @@ def get_daily_paper_trade_report(trade_date: str | None = None) -> PaperTradeDai
 
     return PaperTradeDailyReportResponse(
         trade_date=report_date,
+        strategy_name=normalized_strategy,
         total_trades=len(items),
         open_count=sum(1 for item in items if item.status == "open"),
         finalized_count=len(finalized),
@@ -379,6 +394,87 @@ def get_daily_paper_trade_report(trade_date: str | None = None) -> PaperTradeDai
         worst_scenario=worst_scenario,
         scenario_counts=dict(scenario_counts),
         summary=summary,
+    )
+
+
+def create_manual_basket(request: ManualBasketCreateRequest) -> PaperTradeOpenResponse:
+    ensure_runtime_schema()
+    opened_rows: list[PaperTrade] = []
+    strategy_name = request.strategy_name.strip() or "manual_morning_basket"
+
+    with SessionLocal() as session:
+        existing_open_tickers = {
+            row[0]
+            for row in session.execute(
+                select(PaperTrade.ticker).where(
+                    PaperTrade.status == "open",
+                    PaperTrade.strategy_name == strategy_name,
+                )
+            ).all()
+        }
+        skipped_count = 0
+        for position in request.positions:
+            ticker = position.ticker.upper().strip()
+            if ticker in existing_open_tickers:
+                skipped_count += 1
+                continue
+            snapshot = get_market_snapshot(ticker, force_refresh=True)
+            current_price = float(snapshot.last_price) if snapshot is not None and "matriks" in snapshot.source.lower() else float(position.entry_price)
+            row = PaperTrade(
+                ticker=ticker,
+                company_name=ticker,
+                sector="",
+                strategy_name=strategy_name,
+                scenario=position.scenario,
+                status="open",
+                outcome="open",
+                opportunity_score=0.0,
+                confidence=0.0,
+                data_quality="manual",
+                entry_price=float(position.entry_price),
+                capital_allocated=float(position.capital_allocated),
+                current_price=current_price,
+                max_seen_price=max(float(position.entry_price), current_price),
+                min_seen_price=min(float(position.entry_price), current_price),
+                target_1_price=round(float(position.entry_price) * 1.02, 4),
+                target_2_price=round(float(position.entry_price) * 1.03, 4),
+                stop_price=round(float(position.entry_price) * 0.975, 4),
+                close_price=None,
+                current_return_percent=0.0,
+                max_intraday_return_percent=0.0,
+                min_intraday_return_percent=0.0,
+                hit_2_percent=False,
+                hit_3_percent=False,
+                hit_limit_up=False,
+                stop_hit=False,
+                profit_protected=False,
+                realized_percent=0.0,
+                realized_price=None,
+                realized_return_percent=0.0,
+                protected_stop_price=None,
+                source_scan_payload={"manual_position": position.model_dump()},
+                why_now=["Manuel simülasyon sepeti"],
+                risks=[],
+                opened_at=_utcnow(),
+                last_checked_at=_utcnow(),
+            )
+            _update_trade_with_price(row, current_price)
+            session.add(row)
+            opened_rows.append(row)
+            existing_open_tickers.add(ticker)
+
+        session.commit()
+        for row in opened_rows:
+            session.refresh(row)
+        open_count = len(existing_open_tickers)
+        items = [_trade_item(row) for row in opened_rows]
+
+    return PaperTradeOpenResponse(
+        opened_count=len(items),
+        skipped_count=skipped_count,
+        open_trade_count=open_count,
+        tickers=[item.ticker for item in items],
+        items=items,
     )
 
 
