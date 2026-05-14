@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     scheduler_paper_trade_open_limit: int = 5
     scheduler_paper_trade_max_open_trades: int = 5
     scheduler_paper_trade_min_score: float = 70.0
+    paper_trade_protect_profit_enabled: bool = True
+    paper_trade_protect_level_1_percent: float = 2.0
+    paper_trade_protect_level_1_realized_percent: float = 50.0
+    paper_trade_protect_level_1_stop_gain_percent: float = 0.5
+    paper_trade_protect_level_2_percent: float = 3.0
+    paper_trade_protect_level_2_realized_percent: float = 70.0
+    paper_trade_protect_level_2_stop_gain_percent: float = 1.5
 
     # Live Garanti / Matriks snapshot ayarlari.
     matriks_base_url: str = "https://api.matriksdata.com"

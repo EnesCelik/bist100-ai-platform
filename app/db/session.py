@@ -107,6 +107,31 @@ def ensure_runtime_schema() -> None:
                     "CREATE INDEX IF NOT EXISTS ix_paper_decision_logs_capture_batch_id ON paper_decision_logs (capture_batch_id)"
                 )
             )
+            connection.execute(
+                text(
+                    "ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS profit_protected BOOLEAN DEFAULT FALSE"
+                )
+            )
+            connection.execute(
+                text(
+                    "ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS realized_percent FLOAT DEFAULT 0.0"
+                )
+            )
+            connection.execute(
+                text(
+                    "ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS realized_price FLOAT"
+                )
+            )
+            connection.execute(
+                text(
+                    "ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS realized_return_percent FLOAT DEFAULT 0.0"
+                )
+            )
+            connection.execute(
+                text(
+                    "ALTER TABLE paper_trades ADD COLUMN IF NOT EXISTS protected_stop_price FLOAT"
+                )
+            )
 
         _schema_initialized = True
 

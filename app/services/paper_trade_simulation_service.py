@@ -79,6 +79,11 @@ def _trade_item(row: PaperTrade) -> PaperTradeItem:
         hit_3_percent=bool(row.hit_3_percent),
         hit_limit_up=bool(row.hit_limit_up),
         stop_hit=bool(row.stop_hit),
+        profit_protected=bool(row.profit_protected),
+        realized_percent=float(row.realized_percent),
+        realized_price=float(row.realized_price) if row.realized_price is not None else None,
+        realized_return_percent=float(row.realized_return_percent),
+        protected_stop_price=float(row.protected_stop_price) if row.protected_stop_price is not None else None,
         why_now=row.why_now or [],
         risks=row.risks or [],
         opened_at=row.opened_at.isoformat() if row.opened_at is not None else None,
@@ -98,8 +103,38 @@ def _update_trade_with_price(row: PaperTrade, price: float, checked_at: datetime
     row.hit_2_percent = bool(row.hit_2_percent or row.max_seen_price >= row.target_1_price)
     row.hit_3_percent = bool(row.hit_3_percent or row.max_seen_price >= row.target_2_price)
     row.hit_limit_up = bool(row.hit_limit_up or row.max_intraday_return_percent >= 9.8)
+    _apply_profit_protection(row)
     row.stop_hit = bool(row.stop_hit or row.min_seen_price <= row.stop_price)
     row.last_checked_at = checked
+
+
+def _apply_profit_protection(row: PaperTrade) -> None:
+    if not settings.paper_trade_protect_profit_enabled:
+        return
+
+    entry_price = float(row.entry_price)
+    max_return = float(row.max_intraday_return_percent)
+    realized_percent = float(row.realized_percent or 0.0)
+
+    if max_return >= settings.paper_trade_protect_level_2_percent:
+        target_realized = settings.paper_trade_protect_level_2_realized_percent
+        stop_gain = settings.paper_trade_protect_level_2_stop_gain_percent
+    elif max_return >= settings.paper_trade_protect_level_1_percent:
+        target_realized = settings.paper_trade_protect_level_1_realized_percent
+        stop_gain = settings.paper_trade_protect_level_1_stop_gain_percent
+    else:
+        return
+
+    protected_stop = round(entry_price * (1 + (stop_gain / 100.0)), 4)
+    if protected_stop > float(row.stop_price):
+        row.stop_price = protected_stop
+        row.protected_stop_price = protected_stop
+
+    if target_realized > realized_percent:
+        row.profit_protected = True
+        row.realized_percent = target_realized
+        row.realized_price = float(row.max_seen_price)
+        row.realized_return_percent = _return_percent(float(row.realized_price), entry_price)
 
 
 def _outcome_for_trade(row: PaperTrade) -> str:
@@ -143,6 +178,11 @@ def _create_trade_from_opportunity(item: OpportunityScanItem) -> PaperTrade | No
         hit_3_percent=False,
         hit_limit_up=False,
         stop_hit=False,
+        profit_protected=False,
+        realized_percent=0.0,
+        realized_price=None,
+        realized_return_percent=0.0,
+        protected_stop_price=None,
         source_scan_payload=item.model_dump(),
         why_now=item.why_now,
         risks=item.risks,
@@ -311,6 +351,7 @@ def get_daily_paper_trade_report(trade_date: str | None = None) -> PaperTradeDai
     hit_2_count = sum(1 for item in items if item.hit_2_percent)
     hit_3_count = sum(1 for item in items if item.hit_3_percent)
     hit_limit_count = sum(1 for item in items if item.hit_limit_up)
+    profit_protected_count = sum(1 for item in items if item.profit_protected)
     win_count = sum(1 for item in finalized if item.outcome == "win")
     loss_count = sum(1 for item in finalized if item.outcome == "loss")
     neutral_count = sum(1 for item in finalized if item.outcome == "neutral")
@@ -328,6 +369,7 @@ def get_daily_paper_trade_report(trade_date: str | None = None) -> PaperTradeDai
         hit_2_percent_count=hit_2_count,
         hit_3_percent_count=hit_3_count,
         hit_limit_up_count=hit_limit_count,
+        profit_protected_count=profit_protected_count,
         win_count=win_count,
         loss_count=loss_count,
         neutral_count=neutral_count,
