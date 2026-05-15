@@ -263,6 +263,77 @@ def _is_opening_candidate_question(question: str) -> bool:
     return any(marker in lowered for marker in markers)
 
 
+def _is_trading_agent_question(question: str) -> bool:
+    lowered = _question_lower(question)
+    markers = [
+        "bugun ne alalim",
+        "bugün ne alalım",
+        "ne alalim",
+        "ne alalım",
+        "ne yapalim",
+        "ne yapalım",
+        "son durum",
+        "simulasyon",
+        "simülasyon",
+        "sepet",
+        "pozisyon",
+        "kalan para",
+        "agent",
+    ]
+    return any(marker in lowered for marker in markers)
+
+
+def _build_trading_agent_response(question: str) -> AskResponse:
+    from app.services.trading_agent_service import get_trading_agent_status
+
+    status = get_trading_agent_status()
+    trade_lines = [
+        f"{item.ticker}: giris {item.entry_price}, guncel {item.current_price}, getiri %{round(item.current_return_percent, 2)}, kalan sermaye {round(item.remaining_capital, 2)}, toplam PnL {round(item.total_position_pnl, 2)}"
+        for item in status.open_trades[:8]
+    ]
+    decision_lines = [
+        f"{item.ticker or '-'} {item.action} ({item.phase}): {item.rationale}"
+        for item in status.latest_decisions[:5]
+    ]
+    action_lines = [
+        f"{item.ticker}: {item.action} - {item.rationale}"
+        for item in status.position_decisions[:6]
+    ]
+
+    if trade_lines:
+        answer = (
+            f"Agent durumuna gore aktif strateji {status.active_strategy_name}. "
+            f"Acik paper trade sayisi {status.open_trade_count}, kapanmis trade sayisi {status.closed_trade_count}, "
+            f"deployed sermaye {status.deployed_capital} TL, portfoy equity {status.portfolio_equity} TL, "
+            f"kullanilabilir nakit {status.available_cash} TL, realize PnL {status.total_realized_pnl} TL, "
+            f"acik PnL {status.total_open_unrealized_pnl} TL, toplam PnL {status.total_position_pnl} TL, "
+            f"risk seviyesi {status.portfolio_risk_level}. "
+            f"Pozisyonlar: {'; '.join(trade_lines)}."
+        )
+    else:
+        answer = "Agent tarafinda acik paper trade yok. Yeni sepet icin once opening-plan calistirilmasi gerekir."
+
+    if action_lines:
+        answer += f" Aksiyon plani: {'; '.join(action_lines)}."
+    answer += f" Nakit karari: {status.cash_action}. {status.cash_rationale}"
+    answer += f" Sonraki kontrol onerisi: {status.recommended_next_check_minutes} dk."
+    if decision_lines:
+        answer += f" Son karar izleri: {'; '.join(decision_lines)}."
+    answer += " Not: Ask cevabi yeni islem acmaz; sadece agent durumunu ve karar izlerini okur."
+
+    return AskResponse(
+        question=question,
+        route_type="analysis_query",
+        answer=answer,
+        used_sources=["trading_agent_status", "paper_trade_simulation", "trading_agent_decision_log"],
+        confidence=0.72 if status.open_trades else 0.45,
+        reasoning_summary="Soru gunluk al/sat veya simulasyon karar niyeti tasidigi icin trading agent status ve karar loglari uzerinden yanitlandi; chat cevabi yan etki olarak yeni trade acmadi.",
+        recommendation=None,
+        analysis_evidence=[],
+        citations=[],
+    )
+
+
 
 def _build_generic_market_pick_response(question: str) -> AskResponse:
     from app.services.market_scan_service import scan_limit_up_candidates, scan_market, scan_opening_candidates
@@ -473,6 +544,8 @@ def _build_sector_comparison_response(question: str) -> AskResponse:
 
 
 def _try_generic_analysis_answer(question: str) -> AskResponse | None:
+    if _is_trading_agent_question(question):
+        return _build_trading_agent_response(question)
     if _is_generic_market_pick_question(question):
         return _build_generic_market_pick_response(question)
     if _is_sector_question(question):

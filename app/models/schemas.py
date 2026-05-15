@@ -28,6 +28,11 @@ class RuntimeHealthResponse(BaseModel):
     last_paper_trade_completed_at: str | None = Field(default=None, description="Paper-trade job last completion time")
     last_paper_trade_status: str | None = Field(default=None, description="Paper-trade job last status")
     last_paper_trade_message: str | None = Field(default=None, description="Paper-trade job last summary message")
+    trading_agent_enabled: bool = Field(default=False, description="Whether trading agent scheduler is enabled")
+    last_trading_agent_started_at: str | None = Field(default=None, description="Trading-agent job last start time")
+    last_trading_agent_completed_at: str | None = Field(default=None, description="Trading-agent job last completion time")
+    last_trading_agent_status: str | None = Field(default=None, description="Trading-agent job last status")
+    last_trading_agent_message: str | None = Field(default=None, description="Trading-agent job last summary message")
 
 
 class DatabaseHealthResponse(BaseModel):
@@ -1016,6 +1021,11 @@ class PaperTradeItem(BaseModel):
     realized_percent: float = Field(description="Simulated realized portion percentage")
     realized_price: float | None = Field(default=None, description="Price used for simulated partial realization")
     realized_return_percent: float = Field(description="Return locked by the simulated realized portion")
+    remaining_percent: float = Field(default=100.0, description="Remaining open position percentage")
+    remaining_capital: float = Field(default=0.0, description="Capital still exposed to open price changes")
+    realized_pnl: float = Field(default=0.0, description="Simulated realized PnL")
+    open_unrealized_pnl: float = Field(default=0.0, description="Unrealized PnL on remaining position")
+    total_position_pnl: float = Field(default=0.0, description="Realized plus open unrealized PnL")
     protected_stop_price: float | None = Field(default=None, description="Raised stop after profit protection")
     why_now: list[str] = Field(description="Original opportunity reasons")
     risks: list[str] = Field(description="Original opportunity risks")
@@ -1044,6 +1054,12 @@ class PaperTradeFinalizeResponse(BaseModel):
     loss_count: int = Field(description="Finalized trades marked loss")
     neutral_count: int = Field(description="Finalized trades marked neutral")
     items: list[PaperTradeItem] = Field(description="Finalized trades")
+
+
+class PaperTradeReduceResponse(BaseModel):
+    reduced_count: int = Field(description="Number of trades partially reduced")
+    skipped_count: int = Field(description="Number of trades skipped")
+    items: list[PaperTradeItem] = Field(description="Updated trades")
 
 
 class PaperTradeHistoryResponse(BaseModel):
@@ -1082,6 +1098,102 @@ class ManualBasketPositionRequest(BaseModel):
 class ManualBasketCreateRequest(BaseModel):
     strategy_name: str = Field(default="manual_morning_basket", description="Manual basket strategy name")
     positions: list[ManualBasketPositionRequest] = Field(description="Manual basket positions")
+
+
+class TradingAgentOpeningPlanRequest(BaseModel):
+    strategy_name: str | None = Field(default=None, description="Optional paper trade strategy name")
+    limit: int = Field(default=5, ge=1, le=20, description="Number of candidates to open")
+    total_capital: float = Field(default=100000.0, gt=0, description="Simulated total capital")
+    cash_buffer: float = Field(default=10000.0, ge=0, description="Capital to keep as cash")
+    min_opening_score: float = Field(default=45.0, ge=0.0, le=100.0, description="Minimum opening scan score")
+
+
+class TradingAgentCandidateDecision(BaseModel):
+    ticker: str = Field(description="BIST ticker code")
+    action: str = Field(description="Agent action", examples=["open", "watch", "skip"])
+    score: float | None = Field(default=None, description="Scanner score used by the agent")
+    entry_price: float | None = Field(default=None, description="Simulated entry price")
+    capital_allocated: float | None = Field(default=None, description="Simulated capital allocation")
+    rationale: str = Field(description="Short decision rationale")
+
+
+class TradingAgentCycleResponse(BaseModel):
+    phase: str = Field(description="Agent cycle phase", examples=["opening_plan"])
+    strategy_name: str = Field(description="Paper trade strategy name")
+    generated_at: str = Field(description="UTC timestamp")
+    action: str = Field(description="High-level action summary")
+    cash_buffer: float = Field(default=0.0, description="Capital kept as cash")
+    decisions: list[TradingAgentCandidateDecision] = Field(default_factory=list, description="Candidate decisions")
+    opened: PaperTradeOpenResponse | None = Field(default=None, description="Opened paper trades")
+    monitored: PaperTradeMonitorResponse | None = Field(default=None, description="Monitor result")
+    finalized: PaperTradeFinalizeResponse | None = Field(default=None, description="Finalize result")
+    report: PaperTradeDailyReportResponse | None = Field(default=None, description="Daily report result")
+
+
+class TradingAgentDecisionLogItem(BaseModel):
+    id: int = Field(description="Decision log id")
+    strategy_name: str = Field(description="Strategy name")
+    phase: str = Field(description="Agent phase")
+    ticker: str = Field(description="Ticker if decision is ticker-specific")
+    action: str = Field(description="Agent action")
+    score: float | None = Field(default=None, description="Decision score")
+    price: float | None = Field(default=None, description="Decision price")
+    capital_allocated: float | None = Field(default=None, description="Capital allocation")
+    rationale: str = Field(description="Decision rationale")
+    created_at: str = Field(description="Decision timestamp")
+
+
+class TradingAgentPositionDecision(BaseModel):
+    ticker: str = Field(description="BIST ticker code")
+    action: str = Field(description="Position action", examples=["hold", "watch", "reduce_or_exit"])
+    priority: int = Field(description="Action priority; higher means more urgent")
+    current_return_percent: float = Field(description="Current open return")
+    max_intraday_return_percent: float = Field(description="Best return seen")
+    min_intraday_return_percent: float = Field(description="Worst return seen")
+    distance_to_stop_percent: float | None = Field(default=None, description="Distance from current price to stop")
+    capital_allocated: float = Field(description="Simulated capital allocation")
+    realized_percent: float = Field(default=0.0, description="Already realized position percentage")
+    remaining_capital: float = Field(description="Capital still exposed to open price changes")
+    realized_pnl: float = Field(description="Simulated realized PnL")
+    open_unrealized_pnl: float = Field(description="Open unrealized PnL on remaining position")
+    total_position_pnl: float = Field(description="Realized plus open unrealized PnL")
+    rationale: str = Field(description="Decision rationale")
+
+
+class TradingAgentStatusResponse(BaseModel):
+    generated_at: str = Field(description="UTC timestamp")
+    active_strategy_name: str | None = Field(default=None, description="Most recent active strategy")
+    open_trade_count: int = Field(description="Open paper trades")
+    open_trades: list[PaperTradeItem] = Field(default_factory=list, description="Open paper trades")
+    closed_trade_count: int = Field(default=0, description="Closed paper trades for the active strategy")
+    closed_trades: list[PaperTradeItem] = Field(default_factory=list, description="Closed paper trades for the active strategy")
+    position_decisions: list[TradingAgentPositionDecision] = Field(default_factory=list, description="Per-position agent actions")
+    cash_action: str = Field(default="hold_cash", description="Agent cash action")
+    cash_rationale: str = Field(default="", description="Cash action rationale")
+    open_realized_pnl: float = Field(default=0.0, description="Realized PnL within still-open trades")
+    closed_realized_pnl: float = Field(default=0.0, description="Realized PnL from closed trades")
+    total_realized_pnl: float = Field(default=0.0, description="Total simulated realized PnL")
+    total_open_unrealized_pnl: float = Field(default=0.0, description="Total open unrealized PnL")
+    total_position_pnl: float = Field(default=0.0, description="Total realized plus open unrealized PnL")
+    total_unrealized_pnl: float = Field(default=0.0, description="Backward-compatible alias for total_open_unrealized_pnl")
+    deployed_capital: float = Field(default=0.0, description="Original deployed strategy capital")
+    total_remaining_capital: float = Field(default=0.0, description="Capital still exposed to open positions")
+    available_cash: float = Field(default=0.0, description="Simulated cash released by closed/reduced positions")
+    portfolio_equity: float = Field(default=0.0, description="Remaining capital plus available cash plus total PnL")
+    average_open_return_percent: float | None = Field(default=None, description="Average open return")
+    portfolio_risk_level: str = Field(default="unknown", description="Portfolio risk level")
+    recommended_next_check_minutes: int = Field(default=15, description="Suggested next monitor interval")
+    latest_decisions: list[TradingAgentDecisionLogItem] = Field(default_factory=list, description="Recent agent decisions")
+    latest_report: PaperTradeDailyReportResponse | None = Field(default=None, description="Latest daily report for active strategy")
+    summary: str = Field(description="Human-readable status summary")
+
+
+class TradingAgentReduceResponse(BaseModel):
+    generated_at: str = Field(description="UTC timestamp")
+    strategy_name: str = Field(description="Strategy name")
+    reduce_percent: float = Field(description="Target simulated realized percentage")
+    reduced: PaperTradeReduceResponse = Field(description="Partial reduce result")
+    status: TradingAgentStatusResponse = Field(description="Status after reduce")
 
 
 class AnalysisRunHistoryResponse(BaseModel):

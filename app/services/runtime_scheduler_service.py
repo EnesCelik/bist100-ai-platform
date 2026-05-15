@@ -4,6 +4,7 @@ import asyncio
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from app.core.config import settings
 from app.data_sources.company_data.provider import list_company_records
@@ -30,6 +31,13 @@ class SchedulerRuntimeState:
     last_paper_trade_completed_at: str | None = None
     last_paper_trade_status: str | None = None
     last_paper_trade_message: str | None = None
+    last_trading_agent_started_at: str | None = None
+    last_trading_agent_completed_at: str | None = None
+    last_trading_agent_status: str | None = None
+    last_trading_agent_message: str | None = None
+    last_trading_agent_opening_date: str | None = None
+    last_trading_agent_finalize_date: str | None = None
+    last_trading_agent_report_date: str | None = None
 
 
 _runtime_state = SchedulerRuntimeState()
@@ -77,6 +85,11 @@ def get_runtime_health() -> RuntimeHealthResponse:
         last_paper_trade_completed_at=_runtime_state.last_paper_trade_completed_at,
         last_paper_trade_status=_runtime_state.last_paper_trade_status,
         last_paper_trade_message=_runtime_state.last_paper_trade_message,
+        trading_agent_enabled=settings.scheduler_enabled and settings.scheduler_trading_agent_enabled,
+        last_trading_agent_started_at=_runtime_state.last_trading_agent_started_at,
+        last_trading_agent_completed_at=_runtime_state.last_trading_agent_completed_at,
+        last_trading_agent_status=_runtime_state.last_trading_agent_status,
+        last_trading_agent_message=_runtime_state.last_trading_agent_message,
     )
 
 
@@ -175,6 +188,52 @@ def _run_paper_trade_once() -> None:
         _runtime_state.last_paper_trade_message = str(exc)
 
 
+def _run_trading_agent_job(job_name: str) -> None:
+    from app.models.schemas import TradingAgentOpeningPlanRequest
+    from app.services.trading_agent_service import (
+        get_agent_daily_report,
+        run_finalize_cycle,
+        run_monitor_cycle,
+        run_opening_plan,
+    )
+
+    _runtime_state.last_trading_agent_started_at = _utc_now_iso()
+    _runtime_state.last_trading_agent_status = "running"
+    try:
+        if job_name == "opening":
+            result = run_opening_plan(
+                TradingAgentOpeningPlanRequest(
+                    strategy_name=f"agent_opening_basket_{datetime.now(ZoneInfo('Europe/Istanbul')).strftime('%Y_%m_%d')}",
+                    limit=max(settings.scheduler_paper_trade_open_limit, 1),
+                    total_capital=settings.scheduler_trading_agent_total_capital,
+                    cash_buffer=settings.scheduler_trading_agent_cash_buffer,
+                    min_opening_score=settings.scheduler_trading_agent_min_opening_score,
+                )
+            )
+            message = f"opening opened={result.opened.opened_count if result.opened else 0}, action={result.action}"
+        elif job_name == "finalize":
+            result = run_finalize_cycle()
+            message = f"finalized={result.finalized.finalized_count if result.finalized else 0}"
+        elif job_name == "report":
+            result = get_agent_daily_report()
+            message = f"report total={result.report.total_trades if result.report else 0}"
+        else:
+            result = run_monitor_cycle()
+            message = f"monitor updated={result.monitored.updated_count if result.monitored else 0}"
+
+        _runtime_state.last_trading_agent_completed_at = _utc_now_iso()
+        _runtime_state.last_trading_agent_status = "ok"
+        _runtime_state.last_trading_agent_message = message
+    except Exception as exc:  # noqa: BLE001
+        _runtime_state.last_trading_agent_completed_at = _utc_now_iso()
+        _runtime_state.last_trading_agent_status = "error"
+        _runtime_state.last_trading_agent_message = f"{job_name}: {exc}"
+
+
+def _time_reached(now_local: datetime, hour: int, minute: int) -> bool:
+    return (now_local.hour, now_local.minute) >= (hour, minute)
+
+
 async def _scheduler_loop() -> None:
     cleanup_interval = max(settings.scheduler_cleanup_interval_minutes, 1)
     prefetch_interval = max(settings.scheduler_prefetch_interval_minutes, 1)
@@ -186,9 +245,12 @@ async def _scheduler_loop() -> None:
     next_prefetch_at = datetime.utcnow() + timedelta(minutes=prefetch_initial_delay)
     next_paper_log_at = datetime.utcnow() + timedelta(minutes=paper_log_initial_delay)
     next_paper_trade_at = datetime.utcnow()
+    next_trading_agent_monitor_at = datetime.utcnow()
 
     while _stop_event is not None and not _stop_event.is_set():
         now = datetime.utcnow()
+        now_local = datetime.now(ZoneInfo("Europe/Istanbul"))
+        local_date = now_local.date().isoformat()
 
         if now >= next_cleanup_at:
             await asyncio.to_thread(_run_cleanup_once)
@@ -212,6 +274,53 @@ async def _scheduler_loop() -> None:
         if settings.scheduler_paper_trade_enabled and now >= next_paper_trade_at:
             await asyncio.to_thread(_run_paper_trade_once)
             next_paper_trade_at = datetime.utcnow() + timedelta(minutes=paper_trade_interval)
+
+        if settings.scheduler_trading_agent_enabled:
+            if (
+                _runtime_state.last_trading_agent_opening_date != local_date
+                and _time_reached(
+                    now_local,
+                    settings.scheduler_trading_agent_opening_hour,
+                    settings.scheduler_trading_agent_opening_minute,
+                )
+                and not _time_reached(
+                    now_local,
+                    settings.scheduler_trading_agent_finalize_hour,
+                    settings.scheduler_trading_agent_finalize_minute,
+                )
+            ):
+                await asyncio.to_thread(_run_trading_agent_job, "opening")
+                _runtime_state.last_trading_agent_opening_date = local_date
+
+            if now >= next_trading_agent_monitor_at and not _time_reached(
+                now_local,
+                settings.scheduler_trading_agent_finalize_hour,
+                settings.scheduler_trading_agent_finalize_minute,
+            ):
+                await asyncio.to_thread(_run_trading_agent_job, "monitor")
+                next_trading_agent_monitor_at = datetime.utcnow() + timedelta(minutes=paper_trade_interval)
+
+            if (
+                _runtime_state.last_trading_agent_finalize_date != local_date
+                and _time_reached(
+                    now_local,
+                    settings.scheduler_trading_agent_finalize_hour,
+                    settings.scheduler_trading_agent_finalize_minute,
+                )
+            ):
+                await asyncio.to_thread(_run_trading_agent_job, "finalize")
+                _runtime_state.last_trading_agent_finalize_date = local_date
+
+            if (
+                _runtime_state.last_trading_agent_report_date != local_date
+                and _time_reached(
+                    now_local,
+                    settings.scheduler_trading_agent_report_hour,
+                    settings.scheduler_trading_agent_report_minute,
+                )
+            ):
+                await asyncio.to_thread(_run_trading_agent_job, "report")
+                _runtime_state.last_trading_agent_report_date = local_date
 
         try:
             await asyncio.wait_for(_stop_event.wait(), timeout=15)

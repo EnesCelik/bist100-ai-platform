@@ -186,3 +186,19 @@ class PaperTrade(Base):
     opened_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
     last_checked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
     closed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+
+
+class TradingAgentDecisionLog(Base):
+    __tablename__ = "trading_agent_decision_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    strategy_name: Mapped[str] = mapped_column(String(64), default="", index=True)
+    phase: Mapped[str] = mapped_column(String(32), index=True)
+    ticker: Mapped[str] = mapped_column(String(16), default="", index=True)
+    action: Mapped[str] = mapped_column(String(32), index=True)
+    score: Mapped[float | None] = mapped_column(nullable=True)
+    price: Mapped[float | None] = mapped_column(nullable=True)
+    capital_allocated: Mapped[float | None] = mapped_column(nullable=True)
+    rationale: Mapped[str] = mapped_column(Text, default="")
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)

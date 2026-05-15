@@ -147,6 +147,21 @@ def ensure_runtime_schema() -> None:
                     "CREATE INDEX IF NOT EXISTS ix_paper_trades_strategy_name ON paper_trades (strategy_name)"
                 )
             )
+            connection.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_trading_agent_decision_logs_created_at ON trading_agent_decision_logs (created_at)"
+                )
+            )
+            connection.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_trading_agent_decision_logs_strategy_name ON trading_agent_decision_logs (strategy_name)"
+                )
+            )
+            connection.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_trading_agent_decision_logs_phase ON trading_agent_decision_logs (phase)"
+                )
+            )
 
         _schema_initialized = True
 

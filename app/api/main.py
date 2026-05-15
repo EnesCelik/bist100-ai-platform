@@ -17,6 +17,7 @@ from app.api.routes.paper_trades import router as paper_trades_router
 from app.api.routes.replay_evaluation import router as replay_evaluation_router
 from app.api.routes.scan import router as scan_router
 from app.api.routes.market_data import router as market_data_router
+from app.api.routes.trading_agent import router as trading_agent_router
 from app.core.config import settings
 from app.services.runtime_scheduler_service import start_runtime_scheduler, stop_runtime_scheduler
 
@@ -55,6 +56,7 @@ def create_app() -> FastAPI:
     app.include_router(paper_decision_log_router, prefix=settings.api_v1_prefix)
     app.include_router(paper_trades_router, prefix=settings.api_v1_prefix)
     app.include_router(scan_router, prefix=settings.api_v1_prefix)
+    app.include_router(trading_agent_router, prefix=settings.api_v1_prefix)
 
     return app
 

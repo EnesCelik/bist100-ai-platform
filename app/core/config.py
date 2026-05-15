@@ -58,6 +58,16 @@ class Settings(BaseSettings):
     scheduler_paper_trade_open_limit: int = 5
     scheduler_paper_trade_max_open_trades: int = 5
     scheduler_paper_trade_min_score: float = 70.0
+    scheduler_trading_agent_enabled: bool = False
+    scheduler_trading_agent_opening_hour: int = 9
+    scheduler_trading_agent_opening_minute: int = 55
+    scheduler_trading_agent_finalize_hour: int = 18
+    scheduler_trading_agent_finalize_minute: int = 15
+    scheduler_trading_agent_report_hour: int = 18
+    scheduler_trading_agent_report_minute: int = 30
+    scheduler_trading_agent_total_capital: float = 100000.0
+    scheduler_trading_agent_cash_buffer: float = 10000.0
+    scheduler_trading_agent_min_opening_score: float = 45.0
     paper_trade_protect_profit_enabled: bool = True
     paper_trade_protect_level_1_percent: float = 2.0
     paper_trade_protect_level_1_realized_percent: float = 50.0

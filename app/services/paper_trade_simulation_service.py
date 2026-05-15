@@ -18,6 +18,7 @@ from app.models.schemas import (
     PaperTradeItem,
     PaperTradeMonitorResponse,
     PaperTradeOpenResponse,
+    PaperTradeReduceResponse,
     ManualBasketCreateRequest,
 )
 from app.services.market_scan_service import scan_opportunities
@@ -53,6 +54,28 @@ def _return_percent(price: float, entry_price: float) -> float:
     return round(((price / entry_price) - 1.0) * 100.0, 2)
 
 
+def _remaining_percent(row: PaperTrade) -> float:
+    return round(max(0.0, 100.0 - float(row.realized_percent or 0.0)), 2)
+
+
+def _remaining_capital(row: PaperTrade) -> float:
+    return round(float(row.capital_allocated) * (_remaining_percent(row) / 100.0), 2)
+
+
+def _realized_pnl(row: PaperTrade) -> float:
+    realized_fraction = float(row.realized_percent or 0.0) / 100.0
+    return round(float(row.capital_allocated) * realized_fraction * (float(row.realized_return_percent or 0.0) / 100.0), 2)
+
+
+def _open_unrealized_pnl(row: PaperTrade) -> float:
+    remaining_fraction = _remaining_percent(row) / 100.0
+    return round(float(row.capital_allocated) * remaining_fraction * (float(row.current_return_percent or 0.0) / 100.0), 2)
+
+
+def _total_position_pnl(row: PaperTrade) -> float:
+    return round(_realized_pnl(row) + _open_unrealized_pnl(row), 2)
+
+
 def _trade_item(row: PaperTrade) -> PaperTradeItem:
     return PaperTradeItem(
         id=row.id,
@@ -86,6 +109,11 @@ def _trade_item(row: PaperTrade) -> PaperTradeItem:
         realized_percent=float(row.realized_percent),
         realized_price=float(row.realized_price) if row.realized_price is not None else None,
         realized_return_percent=float(row.realized_return_percent),
+        remaining_percent=_remaining_percent(row),
+        remaining_capital=_remaining_capital(row),
+        realized_pnl=_realized_pnl(row),
+        open_unrealized_pnl=_open_unrealized_pnl(row),
+        total_position_pnl=_total_position_pnl(row),
         protected_stop_price=float(row.protected_stop_price) if row.protected_stop_price is not None else None,
         why_now=row.why_now or [],
         risks=row.risks or [],
@@ -148,6 +176,16 @@ def _outcome_for_trade(row: PaperTrade) -> str:
     if row.stop_hit or row.current_return_percent <= -2.5:
         return "loss"
     return "neutral"
+
+
+def _close_if_fully_realized(row: PaperTrade) -> None:
+    if float(row.realized_percent or 0.0) < 100.0 or row.status == "closed":
+        return
+    row.status = "closed"
+    row.close_price = float(row.realized_price) if row.realized_price is not None else float(row.current_price)
+    row.current_return_percent = _return_percent(float(row.close_price), float(row.entry_price))
+    row.outcome = _outcome_for_trade(row)
+    row.closed_at = _utcnow()
 
 
 def _create_trade_from_opportunity(item: OpportunityScanItem) -> PaperTrade | None:
@@ -305,6 +343,89 @@ def finalize_open_trades() -> PaperTradeFinalizeResponse:
         for row in finalized_rows:
             session.refresh(row)
         items = [_trade_item(row) for row in finalized_rows]
+
+    return PaperTradeFinalizeResponse(
+        finalized_count=len(items),
+        win_count=sum(1 for item in items if item.outcome == "win"),
+        loss_count=sum(1 for item in items if item.outcome == "loss"),
+        neutral_count=sum(1 for item in items if item.outcome == "neutral"),
+        items=items,
+    )
+
+
+def reduce_open_trades(
+    tickers: list[str],
+    strategy_name: str | None = None,
+    reduce_percent: float = 50.0,
+) -> PaperTradeReduceResponse:
+    ensure_runtime_schema()
+    normalized_tickers = {ticker.upper().strip() for ticker in tickers if ticker.strip()}
+    normalized_strategy = strategy_name.strip() if strategy_name else None
+    target_realized = max(0.0, min(float(reduce_percent), 100.0))
+    updated_rows: list[PaperTrade] = []
+    skipped_count = 0
+
+    if not normalized_tickers or target_realized <= 0:
+        return PaperTradeReduceResponse(reduced_count=0, skipped_count=len(normalized_tickers), items=[])
+
+    with SessionLocal() as session:
+        statement = select(PaperTrade).where(PaperTrade.status == "open", PaperTrade.ticker.in_(normalized_tickers))
+        if normalized_strategy:
+            statement = statement.where(PaperTrade.strategy_name == normalized_strategy)
+        rows = session.execute(statement.order_by(PaperTrade.opened_at.asc())).scalars().all()
+        found_tickers = {row.ticker for row in rows}
+        skipped_count += len(normalized_tickers - found_tickers)
+
+        for row in rows:
+            current_realized = float(row.realized_percent or 0.0)
+            if current_realized >= target_realized:
+                skipped_count += 1
+                continue
+            snapshot = get_market_snapshot(row.ticker, force_refresh=True)
+            if snapshot is not None and "matriks" in snapshot.source.lower():
+                _update_trade_with_price(row, float(snapshot.last_price))
+            row.profit_protected = True
+            row.realized_percent = target_realized
+            row.realized_price = float(row.current_price)
+            row.realized_return_percent = _return_percent(float(row.realized_price), float(row.entry_price))
+            _close_if_fully_realized(row)
+            row.source_scan_payload = {
+                **(row.source_scan_payload or {}),
+                "manual_reduce": {
+                    "target_realized_percent": target_realized,
+                    "realized_price": row.realized_price,
+                    "realized_return_percent": row.realized_return_percent,
+                    "created_at": _utcnow().isoformat(),
+                },
+            }
+            updated_rows.append(row)
+
+        session.commit()
+        for row in updated_rows:
+            session.refresh(row)
+        items = [_trade_item(row) for row in updated_rows]
+
+    return PaperTradeReduceResponse(reduced_count=len(items), skipped_count=skipped_count, items=items)
+
+
+def close_fully_realized_trades(strategy_name: str | None = None) -> PaperTradeFinalizeResponse:
+    ensure_runtime_schema()
+    normalized_strategy = strategy_name.strip() if strategy_name else None
+    closed_rows: list[PaperTrade] = []
+
+    with SessionLocal() as session:
+        statement = select(PaperTrade).where(PaperTrade.status == "open", PaperTrade.realized_percent >= 100.0)
+        if normalized_strategy:
+            statement = statement.where(PaperTrade.strategy_name == normalized_strategy)
+        rows = session.execute(statement.order_by(PaperTrade.opened_at.asc())).scalars().all()
+        for row in rows:
+            _close_if_fully_realized(row)
+            closed_rows.append(row)
+
+        session.commit()
+        for row in closed_rows:
+            session.refresh(row)
+        items = [_trade_item(row) for row in closed_rows]
 
     return PaperTradeFinalizeResponse(
         finalized_count=len(items),
