@@ -228,6 +228,8 @@ def _build_bar_url(context: dict[str, Any]) -> str:
         "period": period,
         "count": context["fetch_count"],
         "timestamp": int(_utcnow().timestamp() * 1000),
+        "mid": int(_utcnow().timestamp() * 1000),
+        "ngsw-bypass": "true",
     })
     return f"{context['base_url']}{bar_path}?{query}"
 
@@ -292,8 +294,15 @@ def _fetch_quote_payload(ticker: str) -> dict[str, Any] | None:
         request_url,
         headers={
             "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
             "Content-Type": "application/json; charset=utf-8",
             "Authorization": f"jwt {context['token']}",
+            "Origin": "https://trader.garantibbva.com.tr",
+            "Referer": "https://trader.garantibbva.com.tr/",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "cross-site",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
         },
     )
 
@@ -319,8 +328,15 @@ def _fetch_bar_payload(ticker: str, timeframe: str, bars: int) -> list[dict[str,
         request_url,
         headers={
             "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
             "Content-Type": "application/json; charset=utf-8",
             "Authorization": f"jwt {context['token']}",
+            "Origin": "https://trader.garantibbva.com.tr",
+            "Referer": "https://trader.garantibbva.com.tr/",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "cross-site",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
         },
     )
 
