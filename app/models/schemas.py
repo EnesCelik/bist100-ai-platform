@@ -1117,9 +1117,65 @@ class TradingAgentCandidateDecision(BaseModel):
     ticker: str = Field(description="BIST ticker code")
     action: str = Field(description="Agent action", examples=["open", "watch", "skip"])
     score: float | None = Field(default=None, description="Scanner score used by the agent")
+    agent_score: float | None = Field(default=None, description="Agent-weighted score after signal calibration")
+    risk_label: str | None = Field(default=None, description="Agent risk label for the candidate")
     entry_price: float | None = Field(default=None, description="Simulated entry price")
     capital_allocated: float | None = Field(default=None, description="Simulated capital allocation")
     rationale: str = Field(description="Short decision rationale")
+
+
+class TradingAgentSignalScoreItem(BaseModel):
+    ticker: str = Field(description="BIST ticker code")
+    base_opening_score: float = Field(description="Raw opening scanner score")
+    agent_score: float = Field(description="Agent-weighted score")
+    signal_label: str = Field(description="Signal label", examples=["strong_candidate"])
+    risk_label: str = Field(description="Risk label", examples=["medium"])
+    suggested_action: str = Field(description="Suggested agent action", examples=["open"])
+    suggested_capital: float | None = Field(default=None, description="Suggested capital allocation")
+    breakdown: dict[str, float] = Field(default_factory=dict, description="Score component breakdown")
+    reasons: list[str] = Field(default_factory=list, description="Agent score positive reasons")
+    risks: list[str] = Field(default_factory=list, description="Agent score risks")
+
+
+class TradingAgentRegimeResponse(BaseModel):
+    generated_at: str = Field(description="UTC timestamp")
+    regime: str = Field(description="Detected intraday regime", examples=["risk_on"])
+    risk_multiplier: float = Field(description="Position sizing multiplier for the regime")
+    average_change_percent: float | None = Field(default=None, description="Average change across inspected candidates")
+    average_volume_ratio: float | None = Field(default=None, description="Average volume ratio across inspected candidates")
+    positive_candidate_count: int = Field(description="Number of positive-change candidates")
+    inspected_count: int = Field(description="Number of inspected candidates")
+    rationale: str = Field(description="Regime rationale")
+
+
+class TradingAgentReplayItem(BaseModel):
+    ticker: str = Field(description="BIST ticker code")
+    agent_score: float | None = Field(default=None, description="Current agent score if available")
+    calibration_bias: str | None = Field(default=None, description="Replay calibration bias")
+    take_profit_rate: float | None = Field(default=None, description="Historical take-profit hit rate")
+    stop_loss_rate: float | None = Field(default=None, description="Historical stop-loss hit rate")
+    positive_close_rate: float | None = Field(default=None, description="Historical positive close rate")
+    average_close_return_percent: float | None = Field(default=None, description="Average close return in replay")
+    average_max_upside_percent: float | None = Field(default=None, description="Average max upside in replay")
+    assessment: str = Field(description="Replay assessment")
+
+
+class TradingAgentReplayResponse(BaseModel):
+    generated_at: str = Field(description="UTC timestamp")
+    limit: int = Field(description="Candidate limit")
+    horizon_bars: int = Field(description="Replay horizon bars")
+    sample_size: int = Field(description="Replay sample size")
+    total: int = Field(description="Returned replay items")
+    items: list[TradingAgentReplayItem] = Field(default_factory=list, description="Replay assessment items")
+    summary: str = Field(description="Replay summary")
+
+
+class TradingAgentLearningWeightsResponse(BaseModel):
+    generated_at: str = Field(description="UTC timestamp")
+    trade_date: str = Field(description="Learning report date")
+    strategy_name: str | None = Field(default=None, description="Strategy name")
+    adjustments: dict[str, float] = Field(default_factory=dict, description="Suggested next-session score adjustments")
+    rationale: list[str] = Field(default_factory=list, description="Adjustment rationale")
 
 
 class TradingAgentCycleResponse(BaseModel):
@@ -1129,6 +1185,8 @@ class TradingAgentCycleResponse(BaseModel):
     action: str = Field(description="High-level action summary")
     cash_buffer: float = Field(default=0.0, description="Capital kept as cash")
     decisions: list[TradingAgentCandidateDecision] = Field(default_factory=list, description="Candidate decisions")
+    regime: TradingAgentRegimeResponse | None = Field(default=None, description="Detected intraday regime")
+    signal_scores: list[TradingAgentSignalScoreItem] = Field(default_factory=list, description="Agent signal score details")
     opened: PaperTradeOpenResponse | None = Field(default=None, description="Opened paper trades")
     monitored: PaperTradeMonitorResponse | None = Field(default=None, description="Monitor result")
     finalized: PaperTradeFinalizeResponse | None = Field(default=None, description="Finalize result")

@@ -3,12 +3,20 @@ from fastapi import APIRouter, Query
 from app.models.schemas import (
     TradingAgentCycleResponse,
     TradingAgentLearningReportResponse,
+    TradingAgentLearningWeightsResponse,
     TradingAgentMorningTelegramResponse,
     TradingAgentOpeningPlanRequest,
     TradingAgentReduceResponse,
+    TradingAgentRegimeResponse,
+    TradingAgentReplayResponse,
+    TradingAgentSignalScoreItem,
     TradingAgentStatusResponse,
 )
 from app.services.trading_agent_decision_service import build_agent_learning_report
+from app.services.market_scan_service import scan_opening_candidates
+from app.services.trading_agent_learning_weights_service import build_next_session_weight_adjustments
+from app.services.trading_agent_replay_service import evaluate_agent_candidate_replay
+from app.services.trading_agent_signal_service import detect_regime_from_opening_candidates, score_opening_candidate
 from app.services.trading_agent_telegram_service import send_morning_opening_telegram
 from app.services.trading_agent_service import (
     evaluate_open_positions,
@@ -68,6 +76,47 @@ def get_trading_agent_learning_report(
     strategy_name: str | None = Query(default=None),
 ) -> TradingAgentLearningReportResponse:
     return build_agent_learning_report(trade_date=trade_date, strategy_name=strategy_name)
+
+
+@router.get("/agent/trading/learning-weights", response_model=TradingAgentLearningWeightsResponse)
+def get_trading_agent_learning_weights(
+    trade_date: str | None = Query(default=None),
+    strategy_name: str | None = Query(default=None),
+) -> TradingAgentLearningWeightsResponse:
+    return build_next_session_weight_adjustments(trade_date=trade_date, strategy_name=strategy_name)
+
+
+@router.get("/agent/trading/signals", response_model=list[TradingAgentSignalScoreItem])
+def get_trading_agent_signal_scores(
+    limit: int = Query(default=10, ge=1, le=30),
+) -> list[TradingAgentSignalScoreItem]:
+    scan = scan_opening_candidates(limit=max(limit * 2, limit))
+    regime = detect_regime_from_opening_candidates(scan.items)
+    learning = build_next_session_weight_adjustments()
+    scored = [score_opening_candidate(item, regime=regime, learning_adjustments=learning.adjustments) for item in scan.items]
+    return sorted(scored, key=lambda item: item.agent_score, reverse=True)[:limit]
+
+
+@router.get("/agent/trading/regime", response_model=TradingAgentRegimeResponse)
+def get_trading_agent_regime(
+    limit: int = Query(default=20, ge=5, le=50),
+) -> TradingAgentRegimeResponse:
+    scan = scan_opening_candidates(limit=limit)
+    return detect_regime_from_opening_candidates(scan.items)
+
+
+@router.get("/agent/trading/replay", response_model=TradingAgentReplayResponse)
+def get_trading_agent_replay(
+    limit: int = Query(default=5, ge=1, le=20),
+    horizon_bars: int = Query(default=10, ge=1, le=60),
+    sample_size: int = Query(default=8, ge=1, le=30),
+) -> TradingAgentReplayResponse:
+    scan = scan_opening_candidates(limit=max(limit * 2, limit))
+    regime = detect_regime_from_opening_candidates(scan.items)
+    learning = build_next_session_weight_adjustments()
+    scored = [score_opening_candidate(item, regime=regime, learning_adjustments=learning.adjustments) for item in scan.items]
+    ranked = sorted(scored, key=lambda item: item.agent_score, reverse=True)[:limit]
+    return evaluate_agent_candidate_replay(ranked, horizon_bars=horizon_bars, sample_size=sample_size)
 
 
 @router.post("/agent/trading/morning-telegram", response_model=TradingAgentMorningTelegramResponse)

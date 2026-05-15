@@ -21,6 +21,12 @@ from app.services.paper_trade_simulation_service import (
     monitor_open_trades,
     reduce_open_trades,
 )
+from app.services.trading_agent_learning_weights_service import build_next_session_weight_adjustments
+from app.services.trading_agent_signal_service import (
+    allocate_capital_by_score,
+    detect_regime_from_opening_candidates,
+    score_opening_candidate,
+)
 
 
 def _default_strategy_name(prefix: str) -> str:
@@ -220,15 +226,38 @@ def run_opening_plan(request: TradingAgentOpeningPlanRequest) -> TradingAgentCyc
     strategy_name = request.strategy_name or _default_strategy_name("agent_opening_basket")
     generated_at = datetime.utcnow().isoformat()
     scan = scan_opening_candidates(limit=max(request.limit * 2, request.limit))
+    regime = detect_regime_from_opening_candidates(scan.items)
+    learning_weights = build_next_session_weight_adjustments()
+    learning_adjustments = learning_weights.adjustments
+    scored_candidates = [
+        score_opening_candidate(item, regime=regime, learning_adjustments=learning_adjustments)
+        for item in scan.items
+    ]
+    scored_candidates.sort(key=lambda item: (item.agent_score, -len(item.risks)), reverse=True)
+    scored_by_ticker = {item.ticker: item for item in scored_candidates}
+    items_by_ticker = {item.ticker: item for item in scan.items}
+    min_agent_score = max(request.min_opening_score, 58.0) + learning_adjustments.get("min_agent_score_delta", 0.0)
+    effective_cash_buffer = request.cash_buffer * (1 + (learning_adjustments.get("cash_buffer_delta_percent", 0.0) / 100))
 
     selected = [
-        item
-        for item in scan.items
-        if item.last_price is not None and item.last_price > 0 and item.opening_score >= request.min_opening_score
+        items_by_ticker[item.ticker]
+        for item in scored_candidates
+        if (
+            item.ticker in items_by_ticker
+            and items_by_ticker[item.ticker].last_price is not None
+            and items_by_ticker[item.ticker].last_price > 0
+            and item.agent_score >= min_agent_score
+            and item.suggested_action in {"open", "open_small"}
+        )
     ][: request.limit]
 
-    investable_capital = max(request.total_capital - request.cash_buffer, 0)
-    allocation = investable_capital / len(selected) if selected else 0
+    selected_scores = [scored_by_ticker[item.ticker] for item in selected]
+    allocations = allocate_capital_by_score(
+        selected_scores,
+        total_capital=request.total_capital,
+        cash_buffer=effective_cash_buffer,
+        regime=regime,
+    )
 
     decisions: list[TradingAgentCandidateDecision] = []
     positions: list[ManualBasketPositionRequest] = []
@@ -236,12 +265,17 @@ def run_opening_plan(request: TradingAgentOpeningPlanRequest) -> TradingAgentCyc
 
     for item in selected:
         entry_price = float(item.last_price)
+        signal = scored_by_ticker[item.ticker]
+        allocation = allocations.get(item.ticker, 0.0)
+        if allocation <= 0:
+            continue
+        signal.suggested_capital = allocation
         positions.append(
             ManualBasketPositionRequest(
                 ticker=item.ticker,
                 entry_price=entry_price,
                 capital_allocated=allocation,
-                scenario="agent_opening_candidate",
+                scenario=f"agent_{signal.signal_label}",
             )
         )
         decisions.append(
@@ -249,26 +283,37 @@ def run_opening_plan(request: TradingAgentOpeningPlanRequest) -> TradingAgentCyc
                 ticker=item.ticker,
                 action="open",
                 score=round(float(item.opening_score), 2),
+                agent_score=signal.agent_score,
+                risk_label=signal.risk_label,
                 entry_price=entry_price,
                 capital_allocated=round(allocation, 2),
                 rationale=(
-                    "Opening scan score passed threshold; pre-open volume may still be zero, "
-                    "so this is a paper-trade entry to validate the signal."
+                    f"Agent score {signal.agent_score} ({signal.signal_label}) ile esigi gecti. "
+                    f"Regime={regime.regime}. "
+                    f"Learning={learning_weights.trade_date}. "
+                    f"Sebep: {'; '.join(signal.reasons[:2]) if signal.reasons else 'sinyal agirliklari yeterli'}."
                 ),
             )
         )
 
-    for item in scan.items:
+    for signal in scored_candidates:
+        item = items_by_ticker[signal.ticker]
         if item.ticker in selected_tickers:
             continue
         decisions.append(
             TradingAgentCandidateDecision(
                 ticker=item.ticker,
-                action="watch" if item.opening_score >= request.min_opening_score else "skip",
+                action="watch" if signal.agent_score >= min_agent_score else "skip",
                 score=round(float(item.opening_score), 2),
+                agent_score=signal.agent_score,
+                risk_label=signal.risk_label,
                 entry_price=float(item.last_price) if item.last_price is not None else None,
                 capital_allocated=None,
-                rationale="Not selected because of rank, score threshold, or capital limit.",
+                rationale=(
+                    f"Agent score {signal.agent_score}; secilmedi. "
+                    f"Risk={signal.risk_label}. "
+                    f"Not: {'; '.join(signal.risks[:2]) if signal.risks else 'rank/limit/sermaye siniri'}."
+                ),
             )
         )
 
@@ -283,8 +328,10 @@ def run_opening_plan(request: TradingAgentOpeningPlanRequest) -> TradingAgentCyc
         strategy_name=strategy_name,
         generated_at=generated_at,
         action=action,
-        cash_buffer=request.cash_buffer,
+        cash_buffer=round(effective_cash_buffer, 2),
         decisions=decisions,
+        regime=regime,
+        signal_scores=scored_candidates,
         opened=opened,
     )
     save_agent_cycle_decisions(response)
