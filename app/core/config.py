@@ -68,6 +68,13 @@ class Settings(BaseSettings):
     scheduler_trading_agent_total_capital: float = 100000.0
     scheduler_trading_agent_cash_buffer: float = 10000.0
     scheduler_trading_agent_min_opening_score: float = 45.0
+    scheduler_agent_morning_telegram_enabled: bool = False
+    scheduler_agent_morning_telegram_hour: int = 9
+    scheduler_agent_morning_telegram_minute: int = 0
+    agent_morning_telegram_limit: int = 5
+    bist_market_holidays: str = ""
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
     paper_trade_protect_profit_enabled: bool = True
     paper_trade_protect_level_1_percent: float = 2.0
     paper_trade_protect_level_1_realized_percent: float = 50.0

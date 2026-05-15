@@ -38,6 +38,11 @@ class SchedulerRuntimeState:
     last_trading_agent_opening_date: str | None = None
     last_trading_agent_finalize_date: str | None = None
     last_trading_agent_report_date: str | None = None
+    last_agent_morning_telegram_date: str | None = None
+    last_agent_morning_telegram_started_at: str | None = None
+    last_agent_morning_telegram_completed_at: str | None = None
+    last_agent_morning_telegram_status: str | None = None
+    last_agent_morning_telegram_message: str | None = None
 
 
 _runtime_state = SchedulerRuntimeState()
@@ -90,6 +95,11 @@ def get_runtime_health() -> RuntimeHealthResponse:
         last_trading_agent_completed_at=_runtime_state.last_trading_agent_completed_at,
         last_trading_agent_status=_runtime_state.last_trading_agent_status,
         last_trading_agent_message=_runtime_state.last_trading_agent_message,
+        agent_morning_telegram_enabled=settings.scheduler_enabled and settings.scheduler_agent_morning_telegram_enabled,
+        last_agent_morning_telegram_started_at=_runtime_state.last_agent_morning_telegram_started_at,
+        last_agent_morning_telegram_completed_at=_runtime_state.last_agent_morning_telegram_completed_at,
+        last_agent_morning_telegram_status=_runtime_state.last_agent_morning_telegram_status,
+        last_agent_morning_telegram_message=_runtime_state.last_agent_morning_telegram_message,
     )
 
 
@@ -230,6 +240,24 @@ def _run_trading_agent_job(job_name: str) -> None:
         _runtime_state.last_trading_agent_message = f"{job_name}: {exc}"
 
 
+def _run_agent_morning_telegram_once() -> None:
+    from app.services.trading_agent_telegram_service import send_morning_opening_telegram
+
+    _runtime_state.last_agent_morning_telegram_started_at = _utc_now_iso()
+    _runtime_state.last_agent_morning_telegram_status = "running"
+    try:
+        result = send_morning_opening_telegram(force=False)
+        _runtime_state.last_agent_morning_telegram_completed_at = _utc_now_iso()
+        _runtime_state.last_agent_morning_telegram_status = result.status
+        _runtime_state.last_agent_morning_telegram_message = (
+            f"reason={result.reason}, chat_id_configured={result.chat_id_configured}, tickers={','.join(result.tickers) if result.tickers else 'none'}"
+        )
+    except Exception as exc:  # noqa: BLE001
+        _runtime_state.last_agent_morning_telegram_completed_at = _utc_now_iso()
+        _runtime_state.last_agent_morning_telegram_status = "error"
+        _runtime_state.last_agent_morning_telegram_message = str(exc)
+
+
 def _time_reached(now_local: datetime, hour: int, minute: int) -> bool:
     return (now_local.hour, now_local.minute) >= (hour, minute)
 
@@ -274,6 +302,23 @@ async def _scheduler_loop() -> None:
         if settings.scheduler_paper_trade_enabled and now >= next_paper_trade_at:
             await asyncio.to_thread(_run_paper_trade_once)
             next_paper_trade_at = datetime.utcnow() + timedelta(minutes=paper_trade_interval)
+
+        if (
+            settings.scheduler_agent_morning_telegram_enabled
+            and _runtime_state.last_agent_morning_telegram_date != local_date
+            and _time_reached(
+                now_local,
+                settings.scheduler_agent_morning_telegram_hour,
+                settings.scheduler_agent_morning_telegram_minute,
+            )
+            and not _time_reached(
+                now_local,
+                settings.scheduler_trading_agent_opening_hour,
+                settings.scheduler_trading_agent_opening_minute,
+            )
+        ):
+            await asyncio.to_thread(_run_agent_morning_telegram_once)
+            _runtime_state.last_agent_morning_telegram_date = local_date
 
         if settings.scheduler_trading_agent_enabled:
             if (

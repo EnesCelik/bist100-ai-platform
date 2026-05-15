@@ -33,6 +33,11 @@ class RuntimeHealthResponse(BaseModel):
     last_trading_agent_completed_at: str | None = Field(default=None, description="Trading-agent job last completion time")
     last_trading_agent_status: str | None = Field(default=None, description="Trading-agent job last status")
     last_trading_agent_message: str | None = Field(default=None, description="Trading-agent job last summary message")
+    agent_morning_telegram_enabled: bool = Field(default=False, description="Whether morning Telegram scheduler is enabled")
+    last_agent_morning_telegram_started_at: str | None = Field(default=None, description="Morning Telegram job last start time")
+    last_agent_morning_telegram_completed_at: str | None = Field(default=None, description="Morning Telegram job last completion time")
+    last_agent_morning_telegram_status: str | None = Field(default=None, description="Morning Telegram job last status")
+    last_agent_morning_telegram_message: str | None = Field(default=None, description="Morning Telegram job last summary message")
 
 
 class DatabaseHealthResponse(BaseModel):
@@ -1228,6 +1233,16 @@ class TradingAgentLearningReportResponse(BaseModel):
     lessons: list[str] = Field(default_factory=list, description="Learning notes")
     next_session_rules: list[str] = Field(default_factory=list, description="Rule suggestions for next session")
     summary: str = Field(description="Human-readable summary")
+
+
+class TradingAgentMorningTelegramResponse(BaseModel):
+    generated_at: str = Field(description="UTC timestamp")
+    status: str = Field(description="Telegram send status", examples=["sent", "skipped"])
+    reason: str = Field(description="Status reason")
+    chat_id_configured: bool = Field(description="Whether Telegram chat id is configured")
+    candidate_count: int = Field(description="Number of candidates included")
+    tickers: list[str] = Field(default_factory=list, description="Candidate tickers")
+    calendar_warning: str | None = Field(default=None, description="Market calendar warning if any")
 
 
 class AnalysisRunHistoryResponse(BaseModel):

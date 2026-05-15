@@ -3,11 +3,13 @@ from fastapi import APIRouter, Query
 from app.models.schemas import (
     TradingAgentCycleResponse,
     TradingAgentLearningReportResponse,
+    TradingAgentMorningTelegramResponse,
     TradingAgentOpeningPlanRequest,
     TradingAgentReduceResponse,
     TradingAgentStatusResponse,
 )
 from app.services.trading_agent_decision_service import build_agent_learning_report
+from app.services.trading_agent_telegram_service import send_morning_opening_telegram
 from app.services.trading_agent_service import (
     evaluate_open_positions,
     get_agent_daily_report,
@@ -66,6 +68,13 @@ def get_trading_agent_learning_report(
     strategy_name: str | None = Query(default=None),
 ) -> TradingAgentLearningReportResponse:
     return build_agent_learning_report(trade_date=trade_date, strategy_name=strategy_name)
+
+
+@router.post("/agent/trading/morning-telegram", response_model=TradingAgentMorningTelegramResponse)
+def send_trading_agent_morning_telegram(
+    force: bool = Query(default=False),
+) -> TradingAgentMorningTelegramResponse:
+    return send_morning_opening_telegram(force=force)
 
 
 @router.get("/agent/trading/status", response_model=TradingAgentStatusResponse)
