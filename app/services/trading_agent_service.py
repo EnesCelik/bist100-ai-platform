@@ -390,15 +390,23 @@ def get_agent_daily_report(trade_date: str | None = None, strategy_name: str | N
 
 def get_trading_agent_status(strategy_name: str | None = None) -> TradingAgentStatusResponse:
     close_fully_realized_trades(strategy_name=strategy_name)
-    open_trades = get_paper_trades(limit=50, status="open", strategy_name=strategy_name)
-    latest_decisions = get_latest_agent_decisions(limit=20, strategy_name=strategy_name)
-
     active_strategy_name = strategy_name
-    if active_strategy_name is None and open_trades.items:
-        active_strategy_name = open_trades.items[0].strategy_name
+    latest_decisions = get_latest_agent_decisions(limit=20, strategy_name=strategy_name)
     if active_strategy_name is None and latest_decisions:
         active_strategy_name = latest_decisions[0].strategy_name
 
+    if active_strategy_name is None:
+        all_open_trades = get_paper_trades(limit=50, status="open").items
+        capital_by_strategy: dict[str, float] = {}
+        for item in all_open_trades:
+            capital_by_strategy[item.strategy_name] = capital_by_strategy.get(item.strategy_name, 0.0) + float(item.capital_allocated)
+        if capital_by_strategy:
+            active_strategy_name = max(capital_by_strategy, key=capital_by_strategy.get)
+        elif all_open_trades:
+            active_strategy_name = all_open_trades[0].strategy_name
+
+    open_trades = get_paper_trades(limit=50, status="open", strategy_name=active_strategy_name) if active_strategy_name else get_paper_trades(limit=50, status="open")
+    latest_decisions = get_latest_agent_decisions(limit=20, strategy_name=active_strategy_name) if active_strategy_name else latest_decisions
     closed_trades = get_paper_trades(limit=100, status="closed", strategy_name=active_strategy_name) if active_strategy_name else get_paper_trades(limit=100, status="closed")
     position_decisions = evaluate_open_positions(strategy_name=active_strategy_name, persist=False)
 

@@ -85,7 +85,7 @@ def get_runtime_health() -> RuntimeHealthResponse:
         last_paper_log_completed_at=_runtime_state.last_paper_log_completed_at,
         last_paper_log_status=_runtime_state.last_paper_log_status,
         last_paper_log_message=_runtime_state.last_paper_log_message,
-        paper_trade_enabled=settings.scheduler_enabled and settings.scheduler_paper_trade_enabled,
+        paper_trade_enabled=settings.scheduler_enabled and settings.paper_trade_enabled and settings.scheduler_paper_trade_enabled,
         last_paper_trade_started_at=_runtime_state.last_paper_trade_started_at,
         last_paper_trade_completed_at=_runtime_state.last_paper_trade_completed_at,
         last_paper_trade_status=_runtime_state.last_paper_trade_status,
@@ -299,7 +299,7 @@ async def _scheduler_loop() -> None:
                 await asyncio.to_thread(_run_paper_log_once)
                 next_paper_log_at = datetime.utcnow() + timedelta(minutes=paper_log_interval)
 
-        if settings.scheduler_paper_trade_enabled and now >= next_paper_trade_at:
+        if settings.paper_trade_enabled and settings.scheduler_paper_trade_enabled and now >= next_paper_trade_at:
             await asyncio.to_thread(_run_paper_trade_once)
             next_paper_trade_at = datetime.utcnow() + timedelta(minutes=paper_trade_interval)
 
