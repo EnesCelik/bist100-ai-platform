@@ -1196,6 +1196,40 @@ class TradingAgentReduceResponse(BaseModel):
     status: TradingAgentStatusResponse = Field(description="Status after reduce")
 
 
+class TradingAgentActionOutcomeItem(BaseModel):
+    ticker: str = Field(description="Ticker")
+    action: str = Field(description="Agent action")
+    phase: str = Field(description="Agent phase")
+    decision_count: int = Field(description="Number of decisions for this ticker/action")
+    latest_decision_at: str = Field(description="Latest decision timestamp")
+    trade_status: str = Field(description="Current trade status")
+    outcome: str = Field(description="Trade outcome")
+    realized_percent: float = Field(description="Realized position percentage")
+    current_return_percent: float = Field(description="Current return percent")
+    total_position_pnl: float = Field(description="Total trade PnL")
+    assessment: str = Field(description="Outcome assessment")
+    rationale: str = Field(description="Latest decision rationale")
+
+
+class TradingAgentLearningReportResponse(BaseModel):
+    generated_at: str = Field(description="UTC timestamp")
+    trade_date: str = Field(description="Report date")
+    strategy_name: str | None = Field(default=None, description="Strategy name")
+    decision_count: int = Field(description="Total agent decisions")
+    unique_ticker_count: int = Field(description="Unique tickers with decisions")
+    open_trade_count: int = Field(description="Open trades")
+    closed_trade_count: int = Field(description="Closed trades")
+    total_pnl: float = Field(description="Total strategy PnL")
+    realized_pnl: float = Field(description="Total realized PnL")
+    open_unrealized_pnl: float = Field(description="Open unrealized PnL")
+    action_outcomes: list[TradingAgentActionOutcomeItem] = Field(default_factory=list, description="Action outcome rows")
+    best_action: str | None = Field(default=None, description="Best action/ticker")
+    worst_action: str | None = Field(default=None, description="Worst action/ticker")
+    lessons: list[str] = Field(default_factory=list, description="Learning notes")
+    next_session_rules: list[str] = Field(default_factory=list, description="Rule suggestions for next session")
+    summary: str = Field(description="Human-readable summary")
+
+
 class AnalysisRunHistoryResponse(BaseModel):
     total: int = Field(description="Number of returned analysis runs", examples=[2])
     items: list[AnalysisRunHistoryItem] = Field(description="Analysis run history items")

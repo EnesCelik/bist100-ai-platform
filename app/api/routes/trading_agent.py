@@ -2,10 +2,12 @@ from fastapi import APIRouter, Query
 
 from app.models.schemas import (
     TradingAgentCycleResponse,
+    TradingAgentLearningReportResponse,
     TradingAgentOpeningPlanRequest,
     TradingAgentReduceResponse,
     TradingAgentStatusResponse,
 )
+from app.services.trading_agent_decision_service import build_agent_learning_report
 from app.services.trading_agent_service import (
     evaluate_open_positions,
     get_agent_daily_report,
@@ -56,6 +58,14 @@ def get_trading_agent_report(
     strategy_name: str | None = Query(default=None),
 ) -> TradingAgentCycleResponse:
     return get_agent_daily_report(trade_date=trade_date, strategy_name=strategy_name)
+
+
+@router.get("/agent/trading/learning-report", response_model=TradingAgentLearningReportResponse)
+def get_trading_agent_learning_report(
+    trade_date: str | None = Query(default=None),
+    strategy_name: str | None = Query(default=None),
+) -> TradingAgentLearningReportResponse:
+    return build_agent_learning_report(trade_date=trade_date, strategy_name=strategy_name)
 
 
 @router.get("/agent/trading/status", response_model=TradingAgentStatusResponse)
