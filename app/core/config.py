@@ -88,7 +88,7 @@ class Settings(BaseSettings):
     matriks_market_data_token: str = ""
     matriks_integration_url: str = "https://etrader.garantibbvayatirim.com.tr/0172_v3_trader/Integration.aspx"
     matriks_snapshot_path: str = "/dumrul/v1/snapshot-market-real"
-    matriks_bar_path: str = "/dumrul/v1/tick/bar"
+    matriks_bar_path: str = "/dumrul/v1/tick/bar.gz"
     matriks_depth_path: str = ""
     matriks_sso_login_service: str = "https://ssomatriks.garantibbvayatirim.com.tr/9984_sso_etrader/Integration.aspx"
     matriks_sso_hashkey_service: str = "https://ssomatriks.garantibbvayatirim.com.tr/9984_sso_etrader/SSOCheckState.aspx"
