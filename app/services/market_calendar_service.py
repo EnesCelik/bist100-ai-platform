@@ -38,9 +38,11 @@ def _load_year_calendar(year: int) -> tuple[set[str], set[str], str | None]:
     return holidays, half_days, None
 
 
-def check_bist_trading_day(value: date | datetime | None = None) -> BistCalendarCheck:
+def check_bist_trading_day(value: date | datetime | str | None = None) -> BistCalendarCheck:
     current = value or datetime.now(ISTANBUL_TZ)
-    if isinstance(current, datetime):
+    if isinstance(current, str):
+        current_date = date.fromisoformat(current)
+    elif isinstance(current, datetime):
         current_date = current.astimezone(ISTANBUL_TZ).date()
     else:
         current_date = current
@@ -55,5 +57,5 @@ def check_bist_trading_day(value: date | datetime | None = None) -> BistCalendar
     return BistCalendarCheck(date=date_value, is_trading_day=True, reason="trading_day", calendar_warning=warning)
 
 
-def is_bist_trading_day(value: date | datetime | None = None) -> bool:
+def is_bist_trading_day(value: date | datetime | str | None = None) -> bool:
     return check_bist_trading_day(value).is_trading_day
