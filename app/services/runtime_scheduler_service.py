@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.data_sources.company_data.provider import list_company_records
 from app.data_sources.market_data.provider import get_market_ohlcv, get_market_snapshot
 from app.models.schemas import RuntimeHealthResponse
+from app.services.market_calendar_service import check_bist_trading_day
 from app.services.market_data_cache_service import cleanup_market_data_cache
 
 
@@ -279,6 +280,8 @@ async def _scheduler_loop() -> None:
         now = datetime.utcnow()
         now_local = datetime.now(ZoneInfo("Europe/Istanbul"))
         local_date = now_local.date().isoformat()
+        calendar_check = check_bist_trading_day(now_local)
+        is_trading_day = calendar_check.is_trading_day
 
         if now >= next_cleanup_at:
             await asyncio.to_thread(_run_cleanup_once)
@@ -305,6 +308,7 @@ async def _scheduler_loop() -> None:
 
         if (
             settings.scheduler_agent_morning_telegram_enabled
+            and is_trading_day
             and _runtime_state.last_agent_morning_telegram_date != local_date
             and _time_reached(
                 now_local,
@@ -320,7 +324,12 @@ async def _scheduler_loop() -> None:
             await asyncio.to_thread(_run_agent_morning_telegram_once)
             _runtime_state.last_agent_morning_telegram_date = local_date
 
-        if settings.scheduler_trading_agent_enabled:
+        if settings.scheduler_trading_agent_enabled and not is_trading_day:
+            _runtime_state.last_trading_agent_status = "skipped"
+            _runtime_state.last_trading_agent_message = f"market_closed:{calendar_check.reason}"
+            next_trading_agent_monitor_at = datetime.utcnow() + timedelta(minutes=paper_trade_interval)
+
+        if settings.scheduler_trading_agent_enabled and is_trading_day:
             if (
                 _runtime_state.last_trading_agent_opening_date != local_date
                 and _time_reached(

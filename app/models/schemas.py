@@ -230,6 +230,31 @@ class MarketDataDebugResponse(BaseModel):
     ohlcv_has_yahoo_cache: bool = Field(description="Whether any Yahoo OHLCV cache rows exist for the requested timeframe", examples=[False])
 
 
+class MarketDataProviderHealthResponse(BaseModel):
+    status: str = Field(description="Provider health status", examples=["ok"])
+    provider: str = Field(description="Configured market data provider", examples=["matriks"])
+    production_data_strict: bool = Field(description="Whether fallback to non-production providers is disabled")
+    ticker: str = Field(description="Ticker used for the health probe", examples=["GARAN"])
+    timeframe: str = Field(description="Timeframe used for the OHLCV probe", examples=["1G"])
+    token_loaded: bool = Field(description="Whether a Matriks/Garanti market data token is loaded")
+    token_usable: bool = Field(description="Whether the loaded token is currently usable by local expiry checks")
+    token_expires_at: str | None = Field(default=None, description="Decoded token expiry, if available")
+    runtime_token_loaded: bool = Field(description="Whether token was loaded through browser bootstrap in this runtime")
+    configured_token_loaded: bool = Field(description="Whether token exists in environment configuration")
+    auto_login_configured: bool = Field(description="Whether username/password based auto-login fields are configured")
+    snapshot_available: bool = Field(description="Whether a live snapshot probe returned data")
+    snapshot_source: str | None = Field(default=None, description="Snapshot source returned by the provider")
+    snapshot_is_matriks: bool = Field(description="Whether snapshot source is Matriks-based")
+    ohlcv_available: bool = Field(description="Whether OHLCV probe returned data")
+    ohlcv_source: str | None = Field(default=None, description="OHLCV source returned by the provider")
+    ohlcv_is_matriks: bool = Field(description="Whether OHLCV source is Matriks-based")
+    ohlcv_bars: int = Field(description="Number of OHLCV bars returned")
+    depth_available: bool = Field(description="Whether configured order book/depth data is available")
+    depth_source: str | None = Field(default=None, description="Depth source returned by the provider")
+    depth_message: str | None = Field(default=None, description="Depth availability note")
+    notes: list[str] = Field(description="Human-readable health notes")
+
+
 class GarantiSsoStartResponse(BaseModel):
     status: str = Field(description="SSO bootstrap status", examples=["pending_approval"])
     client_state: str = Field(description="Generated Garanti SSO client_state value")

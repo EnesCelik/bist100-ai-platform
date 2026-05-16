@@ -172,6 +172,22 @@ def decode_market_data_token_expiry(token: str) -> datetime | None:
     return _decode_jwt_expiry(token.strip())
 
 
+def get_market_data_token_status() -> dict[str, Any]:
+    runtime_token = _read_runtime_token()
+    configured_token = _read_configured_token()
+    active_token = runtime_token or configured_token
+    active_expiry = _runtime_token_expires_at if runtime_token else _decode_jwt_expiry(configured_token)
+
+    return {
+        "runtime_token_loaded": bool(runtime_token),
+        "configured_token_loaded": bool(configured_token),
+        "active_token_loaded": bool(active_token),
+        "active_token_expires_at": active_expiry.isoformat() if active_expiry is not None else None,
+        "active_token_usable": _is_token_usable(active_token, active_expiry),
+        "auto_login_configured": _can_auto_login(),
+    }
+
+
 
 def _get_valid_market_data_token() -> str:
     runtime_token = _read_runtime_token()

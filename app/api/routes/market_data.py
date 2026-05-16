@@ -8,6 +8,7 @@ from app.models.schemas import (
     GarantiSsoStartResponse,
     MarketDataCleanupResponse,
     MarketDataDebugResponse,
+    MarketDataProviderHealthResponse,
     MarketDataResponse,
     OHLCVResponse,
     OrderBookPressureResponse,
@@ -17,6 +18,7 @@ from app.services.market_data_service import (
     complete_market_data_garanti_sso,
     fetch_market_data,
     fetch_market_data_debug_for_ticker,
+    fetch_market_data_provider_health,
     fetch_market_ohlcv,
     fetch_order_book_pressure,
     run_market_data_cache_cleanup,
@@ -25,6 +27,14 @@ from app.services.market_data_service import (
 
 
 router = APIRouter(tags=["market-data"])
+
+
+@router.get("/market-data/provider-health", response_model=MarketDataProviderHealthResponse)
+def get_market_data_provider_health(
+    ticker: str = Query(default="GARAN"),
+    timeframe: str = Query(default="1G"),
+) -> MarketDataProviderHealthResponse:
+    return fetch_market_data_provider_health(ticker=ticker, timeframe=timeframe)
 
 
 @router.get("/market-data/{ticker}", response_model=MarketDataResponse)
