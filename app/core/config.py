@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/bist100_ai"
     database_echo: bool = False
     market_data_provider: str = "mock"
+    production_data_strict: bool = False
     yahoo_timeout_seconds: float = 8.0
     market_snapshot_max_age_minutes: int = 2
     ohlcv_cache_max_age_minutes_1h: int = 45

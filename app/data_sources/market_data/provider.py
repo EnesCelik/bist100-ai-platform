@@ -19,6 +19,10 @@ def _normalize_provider_name() -> str:
     return provider
 
 
+def _strict_matriks_mode(provider: str) -> bool:
+    return settings.production_data_strict and provider == "matriks"
+
+
 def get_market_snapshot(ticker: str, force_refresh: bool = False) -> MarketDataResponse | None:
     provider = _normalize_provider_name()
 
@@ -26,6 +30,8 @@ def get_market_snapshot(ticker: str, force_refresh: bool = False) -> MarketDataR
         matriks_snapshot = get_matriks_market_snapshot(ticker, force_refresh=force_refresh)
         if matriks_snapshot is not None:
             return matriks_snapshot
+        if _strict_matriks_mode(provider):
+            return None
 
     yahoo_snapshot = get_yahoo_market_snapshot(ticker, force_refresh=force_refresh)
     if yahoo_snapshot is not None:
@@ -43,6 +49,8 @@ def get_market_ohlcv(ticker: str, timeframe: str = "1G", bars: int = 60) -> OHLC
         matriks_payload = get_matriks_market_ohlcv(ticker, timeframe=timeframe, bars=bars)
         if matriks_payload is not None:
             return matriks_payload
+        if _strict_matriks_mode(provider):
+            return None
 
     yahoo_payload = get_yahoo_market_ohlcv(ticker, timeframe=timeframe, bars=bars)
     if yahoo_payload is not None:
@@ -55,6 +63,8 @@ def get_order_book_pressure(ticker: str, levels: int = 10) -> OrderBookPressureR
     provider = _normalize_provider_name()
 
     if provider == "matriks":
+        return get_matriks_order_book_pressure(ticker, levels=levels)
+    if settings.production_data_strict:
         return get_matriks_order_book_pressure(ticker, levels=levels)
 
     return get_mock_order_book_pressure(ticker, levels=levels)
