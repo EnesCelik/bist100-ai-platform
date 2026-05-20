@@ -3,14 +3,18 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 
-from app.data_sources.company_data.provider import list_company_records
+from app.core.config import settings
+from app.data_sources.company_data.provider import get_company_record, list_company_records
 from app.data_sources.market_data.provider import get_active_market_data_provider, get_market_snapshot, get_order_book_pressure
 from app.db.models import ScanSnapshot
 from app.db.session import SessionLocal, ensure_runtime_schema
 from app.models.schemas import (
     AnalysisEvidence,
+    CompanyResponse,
     LimitUpCandidateItem,
     LimitUpCandidateResponse,
+    LiveMomentumRadarItem,
+    LiveMomentumRadarResponse,
     MarketScanItem,
     MarketScanResponse,
     OpeningCandidateItem,
@@ -144,6 +148,39 @@ def _summarize_used_sources(items: list[MarketScanItem]) -> dict[str, int]:
         for source in item.used_sources:
             summary[source] = summary.get(source, 0) + 1
     return summary
+
+
+def _configured_momentum_tickers() -> list[str]:
+    return [ticker.strip().upper() for ticker in settings.momentum_universe_tickers.split(",") if ticker.strip()]
+
+
+def _momentum_company_records(universe_code: str = "bist100") -> tuple[list[CompanyResponse], dict[str, list[str]]]:
+    records = list_company_records(universe_code=universe_code)
+    if not records:
+        records = list_company_records()
+
+    source_map: dict[str, list[str]] = {}
+    merged: dict[str, CompanyResponse] = {}
+    for record in records:
+        ticker = record.ticker.upper()
+        merged[ticker] = record
+        source_map.setdefault(ticker, []).append(universe_code)
+
+    for ticker in _configured_momentum_tickers():
+        if ticker in merged:
+            source_map.setdefault(ticker, []).append("configured_momentum_universe")
+            continue
+        record = get_company_record(ticker) or CompanyResponse(
+            ticker=ticker,
+            name=ticker,
+            sector="Momentum Watch",
+            signal_enabled=False,
+            source="configured_momentum_universe",
+        )
+        merged[ticker] = record
+        source_map.setdefault(ticker, []).append("configured_momentum_universe")
+
+    return list(merged.values()), source_map
 
 
 
@@ -1349,6 +1386,159 @@ def scan_opportunities(limit: int = 15, include_avoid: bool = False) -> Opportun
     return OpportunityScanResponse(
         generated_at=datetime.utcnow().isoformat(),
         universe_size=len(companies),
+        total=len(limited_items),
+        scenario_counts=scenario_counts,
+        items=limited_items,
+    )
+
+
+def _live_momentum_scenario(change_percent: float, best_ask: float) -> str:
+    if change_percent >= 9.75 or (change_percent >= 8.5 and best_ask <= 0):
+        return "limit_up_locked"
+    if change_percent >= 7.0:
+        return "limit_up_watch"
+    if change_percent >= 3.0:
+        return "strong_intraday_momentum"
+    if change_percent > 0:
+        return "positive_momentum"
+    return "not_positive"
+
+
+def _score_live_momentum_item(company: CompanyResponse, universe_sources: list[str]) -> LiveMomentumRadarItem | None:
+    market_snapshot = get_market_snapshot(company.ticker, force_refresh=True)
+    if market_snapshot is None or "matriks" not in market_snapshot.source.lower():
+        return None
+    if market_snapshot.change_percent <= 0:
+        return None
+
+    daily_chart = _discard_incompatible_chart_summary(
+        get_chart_feature_summary(company.ticker, timeframe="1G"),
+        market_snapshot.last_price,
+    )
+    volume_score, daily_ratio, expected_ratio, _intraday_ratio, volume_bucket, volume_reasons, volume_risks = _volume_pressure_component(
+        market_snapshot,
+        daily_chart,
+        None,
+    )
+    liquidity_score, spread, order_proxy, liquidity_reasons, liquidity_risks = _liquidity_component(market_snapshot)
+    scenario = _live_momentum_scenario(market_snapshot.change_percent, market_snapshot.best_ask)
+    distance_to_limit = round(max(0.0, 10.0 - market_snapshot.change_percent), 2)
+
+    score = 18.0
+    reasons: list[str] = []
+    risks: list[str] = []
+
+    if scenario == "limit_up_locked":
+        score += 48.0
+        reasons.append("Tavan bolgesinde veya satis kademesi bos gorunuyor")
+    elif scenario == "limit_up_watch":
+        score += 39.0
+        reasons.append("Tavana yakin guclu fiyat momentumu var")
+        risks.append("Yuksek prim nedeniyle kovalamaca riski yuksek")
+    elif scenario == "strong_intraday_momentum":
+        score += 29.0
+        reasons.append("Gun ici guclu pozitif momentum var")
+    else:
+        score += 12.0
+        reasons.append("Hisse gun ici pozitif bolgede")
+
+    score += min(max(market_snapshot.change_percent, 0.0) * 3.0, 24.0)
+    score += max(volume_score, -8.0)
+    score += liquidity_score * 0.75
+
+    if distance_to_limit <= 0.25:
+        score += 12.0
+    elif distance_to_limit <= 2.0:
+        score += 8.0
+    elif distance_to_limit <= 5.0:
+        score += 4.0
+
+    if daily_chart is not None:
+        if daily_chart.signal_bias == "bullish":
+            score += 8.0
+            reasons.append("Gunluk teknik bias pozitif")
+        elif daily_chart.signal_bias == "bearish":
+            score -= 7.0
+            risks.append("Gunluk teknik bias negatif")
+        if daily_chart.breakout_state in {"confirmed_breakout_up", "breakout_watch_up"}:
+            score += 5.0
+            reasons.append("Teknik kirilim/izleme bolgesi destekliyor")
+    else:
+        risks.append("Teknik veri uyumsuz veya eksik")
+
+    if market_snapshot.best_ask <= 0 and market_snapshot.change_percent >= 8.5:
+        score += 6.0
+        reasons.append("Satis kademesi bos; tavan kilidi ihtimali")
+
+    reasons.extend(volume_reasons + liquidity_reasons)
+    risks.extend(volume_risks + liquidity_risks)
+    final_score = round(_clamp(score, 0.0, 100.0), 2)
+
+    return LiveMomentumRadarItem(
+        ticker=company.ticker,
+        company_name=company.name,
+        sector=company.sector,
+        universe_sources=list(dict.fromkeys(universe_sources)),
+        scenario=scenario,
+        momentum_score=final_score,
+        probability_bucket=_probability_bucket(final_score),
+        last_price=market_snapshot.last_price,
+        change_percent=market_snapshot.change_percent,
+        distance_to_limit_percent=distance_to_limit,
+        volume=market_snapshot.volume,
+        daily_volume_ratio=daily_ratio,
+        expected_volume_ratio=expected_ratio,
+        volume_momentum_bucket=volume_bucket,
+        technical_bias=daily_chart.signal_bias if daily_chart is not None else None,
+        spread_percent=spread,
+        order_flow_proxy=order_proxy,
+        best_bid=market_snapshot.best_bid,
+        best_ask=market_snapshot.best_ask,
+        is_limit_up_like=scenario == "limit_up_locked",
+        data_quality="fresh_matriks",
+        reasons=list(dict.fromkeys(reasons))[:7],
+        risks=list(dict.fromkeys(risks))[:7],
+    )
+
+
+def scan_live_momentum_radar(limit: int = 15, universe_code: str = "bist100") -> LiveMomentumRadarResponse:
+    companies, source_map = _momentum_company_records(universe_code=universe_code)
+    items: list[LiveMomentumRadarItem] = []
+    positive_count = 0
+    for company in companies:
+        item = _score_live_momentum_item(company, source_map.get(company.ticker.upper(), [universe_code]))
+        if item is None:
+            continue
+        positive_count += 1
+        items.append(item)
+
+    scenario_priority = {
+        "limit_up_locked": 4,
+        "limit_up_watch": 3,
+        "strong_intraday_momentum": 2,
+        "positive_momentum": 1,
+        "not_positive": 0,
+    }
+    ranked = sorted(
+        items,
+        key=lambda item: (
+            scenario_priority.get(item.scenario, 0),
+            item.momentum_score,
+            item.change_percent,
+            item.expected_volume_ratio or 0,
+            item.volume,
+        ),
+        reverse=True,
+    )
+    limited_items = ranked[: max(limit, 1)]
+    scenario_counts: dict[str, int] = {}
+    for item in limited_items:
+        scenario_counts[item.scenario] = scenario_counts.get(item.scenario, 0) + 1
+
+    return LiveMomentumRadarResponse(
+        generated_at=datetime.utcnow().isoformat(),
+        universe_size=len(companies),
+        positive_count=positive_count,
         total=len(limited_items),
         scenario_counts=scenario_counts,
         items=limited_items,

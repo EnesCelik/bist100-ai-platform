@@ -3,6 +3,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.models.schemas import (
     LimitUpCandidateResponse,
+    LiveMomentumRadarResponse,
     MarketScanResponse,
     OpeningCandidateResponse,
     OpportunityScanResponse,
@@ -13,6 +14,7 @@ from app.services.market_scan_service import (
     get_market_scan_snapshot_history,
     save_market_scan_snapshot,
     scan_limit_up_candidates,
+    scan_live_momentum_radar,
     scan_market,
     scan_opening_candidates,
     scan_opportunities,
@@ -52,6 +54,14 @@ def get_opportunities(
     include_avoid: bool = Query(default=False),
 ) -> OpportunityScanResponse:
     return scan_opportunities(limit=limit, include_avoid=include_avoid)
+
+
+@router.get("/scan/live-momentum-radar", response_model=LiveMomentumRadarResponse)
+def get_live_momentum_radar(
+    limit: int = Query(default=15, ge=1, le=100),
+    universe_code: str = Query(default="bist100"),
+) -> LiveMomentumRadarResponse:
+    return scan_live_momentum_radar(limit=limit, universe_code=universe_code)
 
 
 @router.post("/scan/market/snapshot", response_model=ScanSnapshotCreateResponse)

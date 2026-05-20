@@ -480,6 +480,41 @@ class OpportunityScanResponse(BaseModel):
     items: list[OpportunityScanItem] = Field(description="Ranked opportunity scan items")
 
 
+class LiveMomentumRadarItem(BaseModel):
+    ticker: str = Field(description="BIST ticker code", examples=["EUPWR"])
+    company_name: str = Field(description="Company name")
+    sector: str = Field(description="Sector name")
+    universe_sources: list[str] = Field(description="Universes/config sources that included the ticker")
+    scenario: str = Field(description="Live momentum scenario", examples=["limit_up_watch"])
+    momentum_score: float = Field(description="0-100 live momentum score", examples=[88.5])
+    probability_bucket: str = Field(description="Qualitative probability bucket", examples=["high"])
+    last_price: float = Field(description="Latest traded price", examples=[68.8])
+    change_percent: float = Field(description="Daily change percentage", examples=[9.99])
+    distance_to_limit_percent: float = Field(description="Approximate remaining distance to +10% limit")
+    volume: int = Field(description="Latest traded volume")
+    daily_volume_ratio: float | None = Field(default=None, description="Current volume divided by average daily volume")
+    expected_volume_ratio: float | None = Field(default=None, description="Time-adjusted current volume divided by expected volume")
+    volume_momentum_bucket: str | None = Field(default=None, description="Time-adjusted volume momentum bucket")
+    technical_bias: str | None = Field(default=None, description="Daily technical bias")
+    spread_percent: float | None = Field(default=None, description="Best ask/bid spread percentage")
+    order_flow_proxy: str = Field(description="Spread-derived order flow proxy")
+    best_bid: float = Field(description="Best bid price")
+    best_ask: float = Field(description="Best ask price")
+    is_limit_up_like: bool = Field(description="Whether the snapshot looks limit-up/locked")
+    data_quality: str = Field(description="Freshness/source quality label", examples=["fresh_matriks"])
+    reasons: list[str] = Field(description="Positive reasons for the live momentum ranking")
+    risks: list[str] = Field(description="Risk or caution notes")
+
+
+class LiveMomentumRadarResponse(BaseModel):
+    generated_at: str = Field(description="Scan generation timestamp", examples=["2026-05-20T10:05:00"])
+    universe_size: int = Field(description="Number of unique tickers scanned")
+    positive_count: int = Field(description="Number of scanned tickers currently positive")
+    total: int = Field(description="Number of returned radar items")
+    scenario_counts: dict[str, int] = Field(description="Returned scenario distribution")
+    items: list[LiveMomentumRadarItem] = Field(description="Ranked live momentum radar items")
+
+
 class AskRequest(BaseModel):
     question: str = Field(
         description="User question for the assistant",
