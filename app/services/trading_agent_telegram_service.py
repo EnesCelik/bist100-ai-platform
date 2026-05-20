@@ -15,6 +15,7 @@ def _build_morning_telegram_message(limit: int) -> tuple[str, list[str]]:
     today = datetime.now(ISTANBUL_TZ).date().isoformat()
     lines = [
         f"BIST agent sabah listesi - {today}",
+        f"Strict filtreyi gecen aday sayisi: {scan.total}/{scan.universe_size}",
         "",
         "Not: Bu liste paper-trade/izleme amaclidir; gercek emir gondermez.",
         "",

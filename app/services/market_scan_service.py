@@ -83,6 +83,32 @@ def _probability_bucket(score: float) -> str:
     return "watch"
 
 
+def _chart_scale_is_compatible(chart_summary, reference_price: float | None) -> bool:
+    if chart_summary is None or reference_price is None or reference_price <= 0:
+        return True
+
+    levels = [
+        getattr(chart_summary, "ema20", 0),
+        getattr(chart_summary, "nearest_support", 0),
+        getattr(chart_summary, "nearest_resistance", 0),
+        getattr(chart_summary, "breakout_buy_trigger", 0),
+        getattr(chart_summary, "breakdown_sell_trigger", 0),
+    ]
+    positive_levels = [float(level) for level in levels if level is not None and float(level) > 0]
+    if not positive_levels:
+        return True
+
+    median_level = sorted(positive_levels)[len(positive_levels) // 2]
+    ratio = median_level / reference_price
+    return 0.65 <= ratio <= 1.45
+
+
+def _discard_incompatible_chart_summary(chart_summary, reference_price: float | None):
+    if _chart_scale_is_compatible(chart_summary, reference_price):
+        return chart_summary
+    return None
+
+
 def _spread_percent(best_bid: float, best_ask: float) -> float | None:
     if best_bid <= 0 or best_ask <= 0:
         return None
@@ -643,8 +669,15 @@ def _build_opportunity_item(company) -> OpportunityScanItem | None:
         return None
 
     daily_chart = get_chart_feature_summary(company.ticker, timeframe="1G")
-    intraday_1h = get_chart_feature_summary(company.ticker, timeframe="1H")
-    intraday_4h = get_chart_feature_summary(company.ticker, timeframe="4H")
+    daily_chart = _discard_incompatible_chart_summary(daily_chart, market_snapshot.last_price)
+    intraday_1h = _discard_incompatible_chart_summary(
+        get_chart_feature_summary(company.ticker, timeframe="1H"),
+        market_snapshot.last_price,
+    )
+    intraday_4h = _discard_incompatible_chart_summary(
+        get_chart_feature_summary(company.ticker, timeframe="4H"),
+        market_snapshot.last_price,
+    )
     volume_score, daily_volume_ratio, expected_volume_ratio, intraday_volume_ratio, volume_bucket, volume_reasons, volume_risks = _volume_pressure_component(market_snapshot, daily_chart, intraday_1h)
     technical_score, technical_reasons, technical_risks = _technical_pressure_component(daily_chart, intraday_1h, intraday_4h)
     liquidity_score, spread, spread_proxy, liquidity_reasons, liquidity_risks = _liquidity_component(market_snapshot)
@@ -718,9 +751,18 @@ def _build_opening_candidate(company) -> tuple[OpeningCandidateItem | None, bool
     if already_limit:
         return None, True
 
-    daily_chart = get_chart_feature_summary(company.ticker, timeframe="1G")
-    intraday_1h = get_chart_feature_summary(company.ticker, timeframe="1H")
-    intraday_4h = get_chart_feature_summary(company.ticker, timeframe="4H")
+    daily_chart = _discard_incompatible_chart_summary(
+        get_chart_feature_summary(company.ticker, timeframe="1G"),
+        market_snapshot.last_price,
+    )
+    intraday_1h = _discard_incompatible_chart_summary(
+        get_chart_feature_summary(company.ticker, timeframe="1H"),
+        market_snapshot.last_price,
+    )
+    intraday_4h = _discard_incompatible_chart_summary(
+        get_chart_feature_summary(company.ticker, timeframe="4H"),
+        market_snapshot.last_price,
+    )
     trade_calibration = get_trade_calibration_cached(company.ticker, timeframe="1G", horizon_bars=5, sample_size=8, step_bars=5, use_cache_only=True)
 
     volume_score, daily_volume_ratio, expected_volume_ratio, volume_momentum_bucket, volume_reasons, volume_risks = _opening_volume_component(market_snapshot, daily_chart)
