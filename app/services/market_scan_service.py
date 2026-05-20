@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from app.core.config import settings
 from app.data_sources.company_data.provider import get_company_record, list_company_records
-from app.data_sources.market_data.provider import get_active_market_data_provider, get_market_snapshot, get_order_book_pressure
+from app.data_sources.market_data.provider import get_active_market_data_provider, get_market_ohlcv, get_market_snapshot, get_order_book_pressure
 from app.db.models import ScanSnapshot
 from app.db.session import SessionLocal, ensure_runtime_schema
 from app.models.schemas import (
@@ -21,6 +21,8 @@ from app.models.schemas import (
     OpeningCandidateResponse,
     OpportunityScanItem,
     OpportunityScanResponse,
+    PreMarketWatchlistItem,
+    PreMarketWatchlistResponse,
     ScanSnapshotCreateResponse,
     ScanSnapshotHistoryItem,
     ScanSnapshotHistoryResponse,
@@ -1541,6 +1543,180 @@ def scan_live_momentum_radar(limit: int = 15, universe_code: str = "bist100") ->
         positive_count=positive_count,
         total=len(limited_items),
         scenario_counts=scenario_counts,
+        items=limited_items,
+    )
+
+
+def _close_position_percent(open_price: float, high: float, low: float, close: float) -> float:
+    candle_range = high - low
+    if candle_range <= 0:
+        return 50.0 if close >= open_price else 25.0
+    return round(_clamp(((close - low) / candle_range) * 100.0, 0.0, 100.0), 2)
+
+
+def _pre_market_setup_type(score: float, close_position: float, previous_change: float, volume_ratio: float | None, chart_summary) -> str:
+    if previous_change >= 6.0 and close_position >= 70:
+        return "high_momentum_gap_watch"
+    if close_position >= 72 and (volume_ratio or 0) >= 1.0:
+        return "closing_strength_breakout_watch"
+    if chart_summary is not None and chart_summary.signal_bias == "bullish" and close_position >= 55:
+        return "technical_continuation_watch"
+    if score >= 45:
+        return "secondary_watch"
+    return "low_conviction_watch"
+
+
+def _score_pre_market_watchlist_item(company: CompanyResponse, universe_sources: list[str]) -> PreMarketWatchlistItem | None:
+    ohlcv = get_market_ohlcv(company.ticker, timeframe="1G", bars=30)
+    if ohlcv is None or not ohlcv.candles:
+        return None
+    if "matriks" not in ohlcv.source.lower():
+        return None
+
+    candles = ohlcv.candles
+    last = candles[-1]
+    if last.open <= 0 or last.close <= 0:
+        return None
+
+    previous_change = round(((last.close - last.open) / last.open) * 100.0, 2)
+    close_position = _close_position_percent(last.open, last.high, last.low, last.close)
+    previous_volumes = [bar.volume for bar in candles[-11:-1] if bar.volume > 0]
+    avg_volume = sum(previous_volumes) / len(previous_volumes) if previous_volumes else None
+    volume_ratio = round(last.volume / avg_volume, 2) if avg_volume else None
+    five_day_momentum = None
+    if len(candles) >= 6 and candles[-6].close > 0:
+        five_day_momentum = round(((last.close - candles[-6].close) / candles[-6].close) * 100.0, 2)
+
+    chart_summary = _discard_incompatible_chart_summary(
+        get_chart_feature_summary(company.ticker, timeframe="1G"),
+        last.close,
+    )
+
+    score = 24.0
+    reasons: list[str] = []
+    risks: list[str] = []
+
+    if previous_change >= 8.0:
+        score += 16.0
+        reasons.append("Onceki gun cok guclu pozitif kapanis")
+        risks.append("Yuksek onceki gun primi nedeniyle gap/kar realizasyonu riski")
+    elif previous_change >= 3.0:
+        score += 18.0
+        reasons.append("Onceki gun guclu pozitif kapanis")
+    elif previous_change >= 1.0:
+        score += 12.0
+        reasons.append("Onceki gun pozitif kapanis")
+    elif previous_change >= -0.5:
+        score += 4.0
+        reasons.append("Onceki gun dengeli kapanis")
+    else:
+        score -= 8.0
+        risks.append("Onceki gun zayif kapanis")
+
+    if close_position >= 82:
+        score += 18.0
+        reasons.append("Gunluk mum tepeye yakin kapandi")
+    elif close_position >= 65:
+        score += 11.0
+        reasons.append("Kapanis gunluk araligin ust bolgesinde")
+    elif close_position <= 35:
+        score -= 9.0
+        risks.append("Kapanis mumun alt bolgesinde")
+
+    if volume_ratio is not None:
+        if volume_ratio >= 1.8:
+            score += 15.0
+            reasons.append("Kapanis hacmi son ortalamanin cok uzerinde")
+        elif volume_ratio >= 1.15:
+            score += 9.0
+            reasons.append("Kapanis hacmi ortalama uzerinde")
+        elif volume_ratio < 0.65:
+            score -= 6.0
+            risks.append("Kapanis hacmi zayif")
+    else:
+        risks.append("Hacim ortalamasi hesaplanamadi")
+
+    if five_day_momentum is not None:
+        if 2.0 <= five_day_momentum <= 18.0:
+            score += 9.0
+            reasons.append("Son 5 gun momentum pozitif")
+        elif five_day_momentum > 22.0:
+            score += 3.0
+            risks.append("Son 5 gun hareketi asiri isindi")
+        elif five_day_momentum < -4.0:
+            score -= 5.0
+            risks.append("Son 5 gun momentum negatif")
+
+    if chart_summary is not None:
+        if chart_summary.signal_bias == "bullish":
+            score += 11.0
+            reasons.append("Gunluk teknik bias pozitif")
+        elif chart_summary.signal_bias == "bearish":
+            score -= 9.0
+            risks.append("Gunluk teknik bias negatif")
+        if chart_summary.breakout_state in {"confirmed_breakout_up", "breakout_watch_up", "resistance_test"}:
+            score += 7.0
+            reasons.append("Teknik kirilim/direnc izleme bolgesi")
+    else:
+        risks.append("Gunluk teknik veri eksik veya uyumsuz")
+
+    final_score = round(_clamp(score, 0.0, 100.0), 2)
+    if final_score < 42.0:
+        return None
+
+    setup_type = _pre_market_setup_type(final_score, close_position, previous_change, volume_ratio, chart_summary)
+    return PreMarketWatchlistItem(
+        ticker=company.ticker,
+        company_name=company.name,
+        sector=company.sector,
+        universe_sources=list(dict.fromkeys(universe_sources)),
+        pre_market_score=final_score,
+        probability_bucket=_probability_bucket(final_score),
+        previous_close=last.close,
+        previous_change_percent=previous_change,
+        five_day_momentum_percent=five_day_momentum,
+        close_position_percent=close_position,
+        volume_ratio=volume_ratio,
+        technical_bias=chart_summary.signal_bias if chart_summary is not None else None,
+        breakout_state=chart_summary.breakout_state if chart_summary is not None else None,
+        trigger_price=chart_summary.breakout_buy_trigger if chart_summary is not None else None,
+        invalidation_price=chart_summary.breakdown_sell_trigger if chart_summary is not None else None,
+        setup_type=setup_type,
+        data_quality=ohlcv.source,
+        reasons=list(dict.fromkeys(reasons))[:7],
+        risks=list(dict.fromkeys(risks))[:7],
+    )
+
+
+def scan_pre_market_watchlist(limit: int = 15, universe_code: str = "bist100") -> PreMarketWatchlistResponse:
+    companies, source_map = _momentum_company_records(universe_code=universe_code)
+    items: list[PreMarketWatchlistItem] = []
+    for company in companies:
+        item = _score_pre_market_watchlist_item(company, source_map.get(company.ticker.upper(), [universe_code]))
+        if item is not None:
+            items.append(item)
+
+    ranked = sorted(
+        items,
+        key=lambda item: (
+            item.pre_market_score,
+            item.previous_change_percent,
+            item.close_position_percent,
+            item.volume_ratio or 0,
+            item.five_day_momentum_percent or -999,
+        ),
+        reverse=True,
+    )
+    limited_items = ranked[: max(limit, 1)]
+    setup_counts: dict[str, int] = {}
+    for item in limited_items:
+        setup_counts[item.setup_type] = setup_counts.get(item.setup_type, 0) + 1
+
+    return PreMarketWatchlistResponse(
+        generated_at=datetime.utcnow().isoformat(),
+        universe_size=len(companies),
+        total=len(limited_items),
+        setup_counts=setup_counts,
         items=limited_items,
     )
 

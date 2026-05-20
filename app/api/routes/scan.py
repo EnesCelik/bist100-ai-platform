@@ -7,6 +7,7 @@ from app.models.schemas import (
     MarketScanResponse,
     OpeningCandidateResponse,
     OpportunityScanResponse,
+    PreMarketWatchlistResponse,
     ScanSnapshotCreateResponse,
     ScanSnapshotHistoryResponse,
 )
@@ -18,6 +19,7 @@ from app.services.market_scan_service import (
     scan_market,
     scan_opening_candidates,
     scan_opportunities,
+    scan_pre_market_watchlist,
 )
 
 
@@ -62,6 +64,14 @@ def get_live_momentum_radar(
     universe_code: str = Query(default="bist100"),
 ) -> LiveMomentumRadarResponse:
     return scan_live_momentum_radar(limit=limit, universe_code=universe_code)
+
+
+@router.get("/scan/pre-market-watchlist", response_model=PreMarketWatchlistResponse)
+def get_pre_market_watchlist(
+    limit: int = Query(default=15, ge=1, le=100),
+    universe_code: str = Query(default="bist100"),
+) -> PreMarketWatchlistResponse:
+    return scan_pre_market_watchlist(limit=limit, universe_code=universe_code)
 
 
 @router.post("/scan/market/snapshot", response_model=ScanSnapshotCreateResponse)

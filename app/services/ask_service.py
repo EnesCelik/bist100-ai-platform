@@ -154,6 +154,12 @@ def _is_generic_market_pick_question(question: str) -> bool:
         "tavan olabilir",
         "tavana gidebilir",
         "en sert yukselebilecek hisse",
+        "bugun acilista",
+        "bugün açılışta",
+        "acilista hangi",
+        "açılışta hangi",
+        "hangi hisseleri izleyelim",
+        "hangi hisseler izlenir",
         "acilista yukselebilecek",
         "açılışta yükselebilecek",
         "sabah acilista",
@@ -336,30 +342,31 @@ def _build_trading_agent_response(question: str) -> AskResponse:
 
 
 def _build_generic_market_pick_response(question: str) -> AskResponse:
-    from app.services.market_scan_service import scan_limit_up_candidates, scan_market, scan_opening_candidates
+    from app.services.market_scan_service import scan_limit_up_candidates, scan_market, scan_pre_market_watchlist
 
     if _is_opening_candidate_question(question):
-        opening_scan = scan_opening_candidates(limit=5)
-        if not opening_scan.items:
+        pre_market_scan = scan_pre_market_watchlist(limit=5)
+        if not pre_market_scan.items:
             return AskResponse(
                 question=question,
                 route_type="analysis_query",
-                answer="Acilis adayi taramasindan esik ustu guclu aday cikmadi.",
-                used_sources=["opening_candidate_scan"],
+                answer="Pre-market izleme taramasindan esik ustu guclu aday cikmadi.",
+                used_sources=["pre_market_watchlist_scan"],
                 confidence=0.35,
-                reasoning_summary="Acilis odakli soru icin kapanis hacmi, teknik bias, 1H/4H kirilim ve gap riskiyle ozel opening candidate taramasi calisti ancak aday donmedi.",
+                reasoning_summary="Acilis oncesi soru icin onceki gun kapanis gucu, gunluk hacim, 5 gun momentum ve gunluk teknik bias ile pre-market watchlist taramasi calisti ancak aday donmedi.",
                 recommendation=None,
                 analysis_evidence=[],
                 citations=[],
             )
-        top = opening_scan.items[0]
-        alternates = ", ".join(f"{item.ticker} ({item.probability_bucket}, skor {item.opening_score})" for item in opening_scan.items[1:4])
+        top = pre_market_scan.items[0]
+        alternates = ", ".join(f"{item.ticker} ({item.probability_bucket}, skor {item.pre_market_score})" for item in pre_market_scan.items[1:4])
         reason_text = "; ".join(top.reasons[:3])
         risk_text = "; ".join(top.risks[:2])
         answer = (
-            f"Kesin acilis tahmini veremem; ama acilis adayi taramasina gore en guclu aday {top.ticker} ({top.company_name}). "
-            f"Acilis skoru {top.opening_score}/100, kategori {top.probability_bucket}, son fiyat {top.last_price}, son gunluk degisim %{top.change_percent}, hacim orani {top.daily_volume_ratio}. "
-            f"Acilis tetigi {top.opening_trigger}, iptal seviyesi {top.invalidation_level}, gap riski {top.gap_risk}. "
+            f"Kesin acilis tahmini veremem; ama pre-market izleme taramasina gore en guclu aday {top.ticker} ({top.company_name}). "
+            f"Pre-market skoru {top.pre_market_score}/100, kategori {top.probability_bucket}, onceki kapanis {top.previous_close}, "
+            f"onceki degisim %{top.previous_change_percent}, kapanis gucu {top.close_position_percent}, hacim orani {top.volume_ratio}. "
+            f"Izleme tetigi {top.trigger_price}, iptal seviyesi {top.invalidation_price}, kurgu {top.setup_type}. "
             f"Gerekce: {reason_text}."
         )
         if risk_text:
@@ -370,9 +377,9 @@ def _build_generic_market_pick_response(question: str) -> AskResponse:
             question=question,
             route_type="analysis_query",
             answer=answer,
-            used_sources=["opening_candidate_scan", "matriks_market_data_tool", "chart_feature_signal_service"],
+            used_sources=["pre_market_watchlist_scan", "matriks_ohlcv", "chart_feature_signal_service"],
             confidence=0.72 if top.probability_bucket == "high" else 0.62,
-            reasoning_summary="Acilis sorusu, kapanis/onceki seans yuzde degisimi, hacim teyidi, 1H/4H teknik durum, spread proxy'si ve gap riski ile ozel opening candidate skoru kullanilarak yanitlandi.",
+            reasoning_summary="Acilis oncesi soru, onceki gun kapanis gucu, hacim teyidi, 5 gun momentum, gunluk teknik bias ve kirilim durumu ile pre-market watchlist skoru kullanilarak yanitlandi.",
             recommendation=None,
             analysis_evidence=[],
             citations=[],

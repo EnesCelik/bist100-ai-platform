@@ -4,33 +4,34 @@ from zoneinfo import ZoneInfo
 from app.core.config import settings
 from app.models.schemas import TradingAgentMorningTelegramResponse
 from app.services.market_calendar_service import check_bist_trading_day
-from app.services.market_scan_service import scan_opening_candidates
+from app.services.market_scan_service import scan_pre_market_watchlist
 from app.services.telegram_service import send_telegram_message
 
 ISTANBUL_TZ = ZoneInfo("Europe/Istanbul")
 
 
 def _build_morning_telegram_message(limit: int) -> tuple[str, list[str]]:
-    scan = scan_opening_candidates(limit=limit)
+    scan = scan_pre_market_watchlist(limit=limit)
     today = datetime.now(ISTANBUL_TZ).date().isoformat()
     lines = [
-        f"BIST agent sabah listesi - {today}",
-        f"Strict filtreyi gecen aday sayisi: {scan.total}/{scan.universe_size}",
+        f"BIST agent pre-market izleme listesi - {today}",
+        f"Pre-market aday sayisi: {scan.total}/{scan.universe_size}",
         "",
-        "Not: Bu liste paper-trade/izleme amaclidir; gercek emir gondermez.",
+        "Not: Bu liste onceki gun kapanis/hacim/grafik verisiyle uretilir; gercek emir gondermez.",
         "",
     ]
     tickers: list[str] = []
     if not scan.items:
-        lines.append("Bugun esik ustu acilis adayi bulunamadi.")
+        lines.append("Bugun pre-market esik ustu izleme adayi bulunamadi.")
         return "\n".join(lines), tickers
 
     for index, item in enumerate(scan.items, 1):
         tickers.append(item.ticker)
         lines.append(
-            f"{index}. {item.ticker} | skor {round(item.opening_score, 2)} | "
-            f"son {item.last_price} | degisim %{item.change_percent} | "
-            f"closing strength {item.closing_strength_proxy}"
+            f"{index}. {item.ticker} | skor {round(item.pre_market_score, 2)} | "
+            f"onceki kapanis {item.previous_close} | onceki degisim %{item.previous_change_percent} | "
+            f"kapanis gucu {item.close_position_percent} | hacim {item.volume_ratio}x | "
+            f"kurgu {item.setup_type}"
         )
     return "\n".join(lines), tickers
 

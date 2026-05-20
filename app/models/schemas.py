@@ -515,6 +515,36 @@ class LiveMomentumRadarResponse(BaseModel):
     items: list[LiveMomentumRadarItem] = Field(description="Ranked live momentum radar items")
 
 
+class PreMarketWatchlistItem(BaseModel):
+    ticker: str = Field(description="BIST ticker code", examples=["ASTOR"])
+    company_name: str = Field(description="Company name")
+    sector: str = Field(description="Sector name")
+    universe_sources: list[str] = Field(description="Universes/config sources that included the ticker")
+    pre_market_score: float = Field(description="0-100 pre-market watchlist score", examples=[74.5])
+    probability_bucket: str = Field(description="Qualitative probability bucket", examples=["high"])
+    previous_close: float = Field(description="Previous daily close")
+    previous_change_percent: float = Field(description="Previous daily open-close change percentage")
+    five_day_momentum_percent: float | None = Field(default=None, description="Approximate five-bar momentum")
+    close_position_percent: float = Field(description="Previous close position within the daily candle range")
+    volume_ratio: float | None = Field(default=None, description="Previous volume divided by recent average volume")
+    technical_bias: str | None = Field(default=None, description="Daily technical bias")
+    breakout_state: str | None = Field(default=None, description="Daily breakout state")
+    trigger_price: float | None = Field(default=None, description="Level to watch after open")
+    invalidation_price: float | None = Field(default=None, description="Level that weakens the setup")
+    setup_type: str = Field(description="Pre-market setup type", examples=["closing_strength_breakout_watch"])
+    data_quality: str = Field(description="Freshness/source quality label", examples=["matriks_ohlcv"])
+    reasons: list[str] = Field(description="Positive reasons for the pre-market ranking")
+    risks: list[str] = Field(description="Risk or caution notes")
+
+
+class PreMarketWatchlistResponse(BaseModel):
+    generated_at: str = Field(description="Scan generation timestamp", examples=["2026-05-20T09:00:00"])
+    universe_size: int = Field(description="Number of unique tickers scanned")
+    total: int = Field(description="Number of returned watchlist items")
+    setup_counts: dict[str, int] = Field(description="Returned setup distribution")
+    items: list[PreMarketWatchlistItem] = Field(description="Ranked pre-market watchlist items")
+
+
 class AskRequest(BaseModel):
     question: str = Field(
         description="User question for the assistant",
