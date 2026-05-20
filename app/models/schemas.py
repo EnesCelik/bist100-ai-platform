@@ -545,6 +545,17 @@ class PreMarketWatchlistResponse(BaseModel):
     items: list[PreMarketWatchlistItem] = Field(description="Ranked pre-market watchlist items")
 
 
+class ScanUniverseCoverageResponse(BaseModel):
+    generated_at: str = Field(description="Coverage generation timestamp")
+    requested_universe_code: str = Field(description="Requested universe code", examples=["bist100"])
+    base_universe_size: int = Field(description="Number of active companies in the requested universe")
+    all_active_company_count: int = Field(description="Number of active companies currently loaded in company master")
+    configured_momentum_tickers: list[str] = Field(description="Extra tickers added through config")
+    configured_missing_from_master: list[str] = Field(description="Configured tickers not present in company master")
+    scanned_universe_size: int = Field(description="Final unique ticker count used by recommendation scans")
+    scanned_tickers: list[str] = Field(description="Final unique ticker list")
+
+
 class AskRequest(BaseModel):
     question: str = Field(
         description="User question for the assistant",

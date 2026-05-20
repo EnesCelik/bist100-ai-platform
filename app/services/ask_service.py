@@ -342,15 +342,20 @@ def _build_trading_agent_response(question: str) -> AskResponse:
 
 
 def _build_generic_market_pick_response(question: str) -> AskResponse:
-    from app.services.market_scan_service import scan_limit_up_candidates, scan_market, scan_pre_market_watchlist
+    from app.services.market_scan_service import get_scan_universe_coverage, scan_limit_up_candidates, scan_market, scan_pre_market_watchlist
 
     if _is_opening_candidate_question(question):
         pre_market_scan = scan_pre_market_watchlist(limit=5)
+        coverage = get_scan_universe_coverage()
         if not pre_market_scan.items:
             return AskResponse(
                 question=question,
                 route_type="analysis_query",
-                answer="Pre-market izleme taramasindan esik ustu guclu aday cikmadi.",
+                answer=(
+                    "Pre-market izleme taramasindan esik ustu guclu aday cikmadi. "
+                    f"Tarama evreni: {coverage.scanned_universe_size} hisse "
+                    f"({coverage.base_universe_size} ana evren + {len(coverage.configured_momentum_tickers)} ek momentum ticker)."
+                ),
                 used_sources=["pre_market_watchlist_scan"],
                 confidence=0.35,
                 reasoning_summary="Acilis oncesi soru icin onceki gun kapanis gucu, gunluk hacim, 5 gun momentum ve gunluk teknik bias ile pre-market watchlist taramasi calisti ancak aday donmedi.",
@@ -364,6 +369,8 @@ def _build_generic_market_pick_response(question: str) -> AskResponse:
         risk_text = "; ".join(top.risks[:2])
         answer = (
             f"Kesin acilis tahmini veremem; ama pre-market izleme taramasina gore en guclu aday {top.ticker} ({top.company_name}). "
+            f"Bu cevap {coverage.scanned_universe_size} hisselik izleme evreni taranarak uretildi "
+            f"({coverage.base_universe_size} ana evren + {len(coverage.configured_momentum_tickers)} ek momentum ticker). "
             f"Pre-market skoru {top.pre_market_score}/100, kategori {top.probability_bucket}, onceki kapanis {top.previous_close}, "
             f"onceki degisim %{top.previous_change_percent}, kapanis gucu {top.close_position_percent}, hacim orani {top.volume_ratio}. "
             f"Izleme tetigi {top.trigger_price}, iptal seviyesi {top.invalidation_price}, kurgu {top.setup_type}. "

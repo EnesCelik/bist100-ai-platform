@@ -10,8 +10,10 @@ from app.models.schemas import (
     PreMarketWatchlistResponse,
     ScanSnapshotCreateResponse,
     ScanSnapshotHistoryResponse,
+    ScanUniverseCoverageResponse,
 )
 from app.services.market_scan_service import (
+    get_scan_universe_coverage,
     get_market_scan_snapshot_history,
     save_market_scan_snapshot,
     scan_limit_up_candidates,
@@ -30,32 +32,36 @@ router = APIRouter(tags=["scan"])
 def get_market_scan(
     stance: str | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=100),
+    universe_code: str = Query(default="bist100"),
 ) -> MarketScanResponse:
     # Tarama endpoint'i bos sonuc senaryosunda 404 donmemeli.
     # Dashboard bullish/bearish gibi filtreli taramalarda bos listeyi dogal olarak gosterebilir.
-    return scan_market(stance=stance, limit=limit)
+    return scan_market(stance=stance, limit=limit, universe_code=universe_code)
 
 
 @router.get("/scan/limit-up-candidates", response_model=LimitUpCandidateResponse)
 def get_limit_up_candidates(
     limit: int = Query(default=15, ge=1, le=100),
+    universe_code: str = Query(default="bist100"),
 ) -> LimitUpCandidateResponse:
-    return scan_limit_up_candidates(limit=limit)
+    return scan_limit_up_candidates(limit=limit, universe_code=universe_code)
 
 
 @router.get("/scan/opening-candidates", response_model=OpeningCandidateResponse)
 def get_opening_candidates(
     limit: int = Query(default=15, ge=1, le=100),
+    universe_code: str = Query(default="bist100"),
 ) -> OpeningCandidateResponse:
-    return scan_opening_candidates(limit=limit)
+    return scan_opening_candidates(limit=limit, universe_code=universe_code)
 
 
 @router.get("/scan/opportunities", response_model=OpportunityScanResponse)
 def get_opportunities(
     limit: int = Query(default=15, ge=1, le=100),
     include_avoid: bool = Query(default=False),
+    universe_code: str = Query(default="bist100"),
 ) -> OpportunityScanResponse:
-    return scan_opportunities(limit=limit, include_avoid=include_avoid)
+    return scan_opportunities(limit=limit, include_avoid=include_avoid, universe_code=universe_code)
 
 
 @router.get("/scan/live-momentum-radar", response_model=LiveMomentumRadarResponse)
@@ -72,6 +78,13 @@ def get_pre_market_watchlist(
     universe_code: str = Query(default="bist100"),
 ) -> PreMarketWatchlistResponse:
     return scan_pre_market_watchlist(limit=limit, universe_code=universe_code)
+
+
+@router.get("/scan/universe-coverage", response_model=ScanUniverseCoverageResponse)
+def get_universe_coverage(
+    universe_code: str = Query(default="bist100"),
+) -> ScanUniverseCoverageResponse:
+    return get_scan_universe_coverage(universe_code=universe_code)
 
 
 @router.post("/scan/market/snapshot", response_model=ScanSnapshotCreateResponse)

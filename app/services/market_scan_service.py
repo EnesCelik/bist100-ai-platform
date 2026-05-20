@@ -26,6 +26,7 @@ from app.models.schemas import (
     ScanSnapshotCreateResponse,
     ScanSnapshotHistoryItem,
     ScanSnapshotHistoryResponse,
+    ScanUniverseCoverageResponse,
 )
 from app.services.ask_service import _build_analysis_answer, _calculate_analysis_confidence
 from app.services.chart_feature_service import get_chart_feature_summary
@@ -183,6 +184,27 @@ def _momentum_company_records(universe_code: str = "bist100") -> tuple[list[Comp
         source_map.setdefault(ticker, []).append("configured_momentum_universe")
 
     return list(merged.values()), source_map
+
+
+def get_scan_universe_coverage(universe_code: str = "bist100") -> ScanUniverseCoverageResponse:
+    base_records = list_company_records(universe_code=universe_code)
+    if not base_records:
+        base_records = list_company_records()
+    all_records = list_company_records()
+    scanned_records, _source_map = _momentum_company_records(universe_code=universe_code)
+    configured = _configured_momentum_tickers()
+    master_tickers = {record.ticker.upper() for record in all_records}
+
+    return ScanUniverseCoverageResponse(
+        generated_at=datetime.utcnow().isoformat(),
+        requested_universe_code=universe_code,
+        base_universe_size=len(base_records),
+        all_active_company_count=len(all_records),
+        configured_momentum_tickers=configured,
+        configured_missing_from_master=[ticker for ticker in configured if ticker not in master_tickers],
+        scanned_universe_size=len(scanned_records),
+        scanned_tickers=sorted(record.ticker for record in scanned_records),
+    )
 
 
 
@@ -1207,11 +1229,9 @@ def _build_scan_analysis(company):
 
 
 
-def _build_scan_items(stance: str | None = None, ranking_mode: str = "default") -> tuple[list[MarketScanItem], int]:
+def _build_scan_items(stance: str | None = None, ranking_mode: str = "default", universe_code: str = "bist100") -> tuple[list[MarketScanItem], int]:
     normalized_stance = stance.lower() if stance is not None else None
-    companies = list_company_records(universe_code="bist100")
-    if not companies:
-        companies = list_company_records()
+    companies, _source_map = _momentum_company_records(universe_code=universe_code)
     ranked_payloads: list[tuple[MarketScanItem, float, int]] = []
 
     for company in companies:
@@ -1264,8 +1284,8 @@ def _build_scan_items(stance: str | None = None, ranking_mode: str = "default") 
 
 
 
-def scan_market(stance: str | None = None, limit: int = 20, ranking_mode: str = "default") -> MarketScanResponse:
-    ranked_items, universe_size = _build_scan_items(stance=stance, ranking_mode=ranking_mode)
+def scan_market(stance: str | None = None, limit: int = 20, ranking_mode: str = "default", universe_code: str = "bist100") -> MarketScanResponse:
+    ranked_items, universe_size = _build_scan_items(stance=stance, ranking_mode=ranking_mode, universe_code=universe_code)
     limited_items = ranked_items[: max(limit, 1)]
 
     return MarketScanResponse(
@@ -1276,10 +1296,8 @@ def scan_market(stance: str | None = None, limit: int = 20, ranking_mode: str = 
     )
 
 
-def scan_limit_up_candidates(limit: int = 15) -> LimitUpCandidateResponse:
-    companies = list_company_records(universe_code="bist100")
-    if not companies:
-        companies = list_company_records()
+def scan_limit_up_candidates(limit: int = 15, universe_code: str = "bist100") -> LimitUpCandidateResponse:
+    companies, _source_map = _momentum_company_records(universe_code=universe_code)
 
     candidates: list[LimitUpCandidateItem] = []
     excluded_already_limit_count = 0
@@ -1312,10 +1330,8 @@ def scan_limit_up_candidates(limit: int = 15) -> LimitUpCandidateResponse:
     )
 
 
-def scan_opening_candidates(limit: int = 15) -> OpeningCandidateResponse:
-    companies = list_company_records(universe_code="bist100")
-    if not companies:
-        companies = list_company_records()
+def scan_opening_candidates(limit: int = 15, universe_code: str = "bist100") -> OpeningCandidateResponse:
+    companies, _source_map = _momentum_company_records(universe_code=universe_code)
 
     candidates: list[OpeningCandidateItem] = []
     excluded_already_limit_count = 0
@@ -1348,10 +1364,8 @@ def scan_opening_candidates(limit: int = 15) -> OpeningCandidateResponse:
     )
 
 
-def scan_opportunities(limit: int = 15, include_avoid: bool = False) -> OpportunityScanResponse:
-    companies = list_company_records(universe_code="bist100")
-    if not companies:
-        companies = list_company_records()
+def scan_opportunities(limit: int = 15, include_avoid: bool = False, universe_code: str = "bist100") -> OpportunityScanResponse:
+    companies, _source_map = _momentum_company_records(universe_code=universe_code)
 
     opportunities: list[OpportunityScanItem] = []
     for company in companies:
