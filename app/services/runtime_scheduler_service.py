@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from app.core.config import settings
@@ -44,15 +46,59 @@ class SchedulerRuntimeState:
     last_agent_morning_telegram_completed_at: str | None = None
     last_agent_morning_telegram_status: str | None = None
     last_agent_morning_telegram_message: str | None = None
+    last_agent_intraday_telegram_dates: dict[str, str] | None = None
+    last_agent_intraday_telegram_started_at: str | None = None
+    last_agent_intraday_telegram_completed_at: str | None = None
+    last_agent_intraday_telegram_status: str | None = None
+    last_agent_intraday_telegram_message: str | None = None
 
 
 _runtime_state = SchedulerRuntimeState()
 _scheduler_task: asyncio.Task | None = None
 _stop_event: asyncio.Event | None = None
+_STATE_PATH = Path(__file__).resolve().parents[2] / "data" / "runtime_scheduler_state.json"
 
 
 def _utc_now_iso() -> str:
     return datetime.utcnow().isoformat()
+
+
+def _load_persistent_state() -> None:
+    if not _STATE_PATH.exists():
+        return
+    try:
+        payload = json.loads(_STATE_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    value = payload.get("last_agent_morning_telegram_date")
+    if isinstance(value, str) and value:
+        _runtime_state.last_agent_morning_telegram_date = value
+    intraday_dates = payload.get("last_agent_intraday_telegram_dates")
+    if isinstance(intraday_dates, dict):
+        _runtime_state.last_agent_intraday_telegram_dates = {
+            str(slot): str(sent_date)
+            for slot, sent_date in intraday_dates.items()
+            if slot and sent_date
+        }
+
+
+def _save_persistent_state() -> None:
+    try:
+        _STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _STATE_PATH.write_text(
+            json.dumps(
+                {
+                    "last_agent_morning_telegram_date": _runtime_state.last_agent_morning_telegram_date,
+                    "last_agent_intraday_telegram_dates": _runtime_state.last_agent_intraday_telegram_dates or {},
+                    "updated_at": _utc_now_iso(),
+                },
+                ensure_ascii=True,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+    except OSError:
+        return
 
 
 def _prefetch_tickers() -> list[str]:
@@ -101,6 +147,11 @@ def get_runtime_health() -> RuntimeHealthResponse:
         last_agent_morning_telegram_completed_at=_runtime_state.last_agent_morning_telegram_completed_at,
         last_agent_morning_telegram_status=_runtime_state.last_agent_morning_telegram_status,
         last_agent_morning_telegram_message=_runtime_state.last_agent_morning_telegram_message,
+        agent_intraday_telegram_enabled=settings.scheduler_enabled and settings.scheduler_agent_intraday_telegram_enabled,
+        last_agent_intraday_telegram_started_at=_runtime_state.last_agent_intraday_telegram_started_at,
+        last_agent_intraday_telegram_completed_at=_runtime_state.last_agent_intraday_telegram_completed_at,
+        last_agent_intraday_telegram_status=_runtime_state.last_agent_intraday_telegram_status,
+        last_agent_intraday_telegram_message=_runtime_state.last_agent_intraday_telegram_message,
     )
 
 
@@ -259,8 +310,57 @@ def _run_agent_morning_telegram_once() -> None:
         _runtime_state.last_agent_morning_telegram_message = str(exc)
 
 
+def _run_agent_intraday_telegram_once(slot: str) -> None:
+    from app.services.trading_agent_telegram_service import send_intraday_momentum_telegram
+
+    _runtime_state.last_agent_intraday_telegram_started_at = _utc_now_iso()
+    _runtime_state.last_agent_intraday_telegram_status = "running"
+    try:
+        result = send_intraday_momentum_telegram(slot=slot, force=False)
+        _runtime_state.last_agent_intraday_telegram_completed_at = _utc_now_iso()
+        _runtime_state.last_agent_intraday_telegram_status = result.status
+        _runtime_state.last_agent_intraday_telegram_message = (
+            f"slot={slot}, reason={result.reason}, chat_id_configured={result.chat_id_configured}, "
+            f"tickers={','.join(result.tickers) if result.tickers else 'none'}"
+        )
+    except Exception as exc:  # noqa: BLE001
+        _runtime_state.last_agent_intraday_telegram_completed_at = _utc_now_iso()
+        _runtime_state.last_agent_intraday_telegram_status = "error"
+        _runtime_state.last_agent_intraday_telegram_message = f"slot={slot}: {exc}"
+
+
 def _time_reached(now_local: datetime, hour: int, minute: int) -> bool:
     return (now_local.hour, now_local.minute) >= (hour, minute)
+
+
+def _time_in_send_window(now_local: datetime, hour: int, minute: int, window_minutes: int = 10) -> bool:
+    slot_time = now_local.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    return slot_time <= now_local < slot_time + timedelta(minutes=window_minutes)
+
+
+def _parse_time_slot(value: str) -> tuple[int, int] | None:
+    if ":" not in value:
+        return None
+    hour_text, minute_text = value.split(":", 1)
+    try:
+        hour = int(hour_text)
+        minute = int(minute_text)
+    except ValueError:
+        return None
+    if not (0 <= hour <= 23 and 0 <= minute <= 59):
+        return None
+    return hour, minute
+
+
+def _intraday_telegram_slots() -> list[tuple[str, int, int]]:
+    slots: list[tuple[str, int, int]] = []
+    for raw_value in settings.scheduler_agent_intraday_telegram_times.split(","):
+        slot = raw_value.strip()
+        parsed = _parse_time_slot(slot)
+        if parsed is None:
+            continue
+        slots.append((slot, parsed[0], parsed[1]))
+    return slots
 
 
 async def _scheduler_loop() -> None:
@@ -287,9 +387,44 @@ async def _scheduler_loop() -> None:
             await asyncio.to_thread(_run_cleanup_once)
             next_cleanup_at = datetime.utcnow() + timedelta(minutes=cleanup_interval)
 
-        if settings.scheduler_prefetch_enabled and now >= next_prefetch_at:
+        # Morning Telegram is time-sensitive; do not let long prefetch/cache jobs block it.
+        morning_telegram_pending = (
+            settings.scheduler_agent_morning_telegram_enabled
+            and is_trading_day
+            and _runtime_state.last_agent_morning_telegram_date != local_date
+            and not _time_reached(
+                now_local,
+                settings.scheduler_trading_agent_opening_hour,
+                settings.scheduler_trading_agent_opening_minute,
+            )
+        )
+        if morning_telegram_pending and _time_reached(
+            now_local,
+            settings.scheduler_agent_morning_telegram_hour,
+            settings.scheduler_agent_morning_telegram_minute,
+        ):
+            await asyncio.to_thread(_run_agent_morning_telegram_once)
+            _runtime_state.last_agent_morning_telegram_date = local_date
+            _save_persistent_state()
+
+        if settings.scheduler_prefetch_enabled and now >= next_prefetch_at and not morning_telegram_pending:
             await asyncio.to_thread(_run_prefetch_once)
             next_prefetch_at = datetime.utcnow() + timedelta(minutes=prefetch_interval)
+
+        if settings.scheduler_agent_intraday_telegram_enabled and is_trading_day:
+            sent_slots = _runtime_state.last_agent_intraday_telegram_dates or {}
+            for slot, hour, minute in _intraday_telegram_slots():
+                if sent_slots.get(slot) == local_date:
+                    continue
+                if _time_in_send_window(now_local, hour, minute) and not _time_reached(
+                    now_local,
+                    settings.scheduler_trading_agent_finalize_hour,
+                    settings.scheduler_trading_agent_finalize_minute,
+                ):
+                    await asyncio.to_thread(_run_agent_intraday_telegram_once, slot)
+                    sent_slots[slot] = local_date
+                    _runtime_state.last_agent_intraday_telegram_dates = sent_slots
+                    _save_persistent_state()
 
         if settings.scheduler_paper_log_enabled and now >= next_paper_log_at:
             prefetch_ready = (
@@ -305,24 +440,6 @@ async def _scheduler_loop() -> None:
         if settings.paper_trade_enabled and settings.scheduler_paper_trade_enabled and now >= next_paper_trade_at:
             await asyncio.to_thread(_run_paper_trade_once)
             next_paper_trade_at = datetime.utcnow() + timedelta(minutes=paper_trade_interval)
-
-        if (
-            settings.scheduler_agent_morning_telegram_enabled
-            and is_trading_day
-            and _runtime_state.last_agent_morning_telegram_date != local_date
-            and _time_reached(
-                now_local,
-                settings.scheduler_agent_morning_telegram_hour,
-                settings.scheduler_agent_morning_telegram_minute,
-            )
-            and not _time_reached(
-                now_local,
-                settings.scheduler_trading_agent_opening_hour,
-                settings.scheduler_trading_agent_opening_minute,
-            )
-        ):
-            await asyncio.to_thread(_run_agent_morning_telegram_once)
-            _runtime_state.last_agent_morning_telegram_date = local_date
 
         if settings.scheduler_trading_agent_enabled and not is_trading_day:
             _runtime_state.last_trading_agent_status = "skipped"
@@ -388,6 +505,7 @@ async def start_runtime_scheduler() -> None:
         return
     if _scheduler_task is not None and not _scheduler_task.done():
         return
+    _load_persistent_state()
     _stop_event = asyncio.Event()
     _scheduler_task = asyncio.create_task(_scheduler_loop(), name="runtime-scheduler")
 

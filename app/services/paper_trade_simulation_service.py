@@ -76,6 +76,34 @@ def _total_position_pnl(row: PaperTrade) -> float:
     return round(_realized_pnl(row) + _open_unrealized_pnl(row), 2)
 
 
+def _payload(row: PaperTrade) -> dict:
+    return row.source_scan_payload or {}
+
+
+def _execution_status_from_payload(row: PaperTrade) -> str:
+    return str(_payload(row).get("execution_status") or "filled")
+
+
+def _execution_reason_from_payload(row: PaperTrade) -> str | None:
+    reason = _payload(row).get("execution_reason")
+    return str(reason) if reason else None
+
+
+def _planned_capital_from_payload(row: PaperTrade) -> float | None:
+    value = _payload(row).get("planned_capital")
+    return float(value) if value is not None else None
+
+
+def _should_mark_no_fill(snapshot) -> tuple[bool, str | None]:
+    if snapshot is None or "matriks" not in snapshot.source.lower():
+        return False, None
+    if snapshot.change_percent >= 9.75:
+        return True, "Fiyat tavan bolgesinde; paper trade icin emir gerceklesmis sayilmadi."
+    if snapshot.change_percent >= 8.5 and snapshot.best_ask <= 0:
+        return True, "Satis kademesi bos gorunuyor; paper trade icin no-fill sayildi."
+    return False, None
+
+
 def _trade_item(row: PaperTrade) -> PaperTradeItem:
     return PaperTradeItem(
         id=row.id,
@@ -115,6 +143,9 @@ def _trade_item(row: PaperTrade) -> PaperTradeItem:
         open_unrealized_pnl=_open_unrealized_pnl(row),
         total_position_pnl=_total_position_pnl(row),
         protected_stop_price=float(row.protected_stop_price) if row.protected_stop_price is not None else None,
+        execution_status=_execution_status_from_payload(row),
+        execution_reason=_execution_reason_from_payload(row),
+        planned_capital=_planned_capital_from_payload(row),
         why_now=row.why_now or [],
         risks=row.risks or [],
         opened_at=row.opened_at.isoformat() if row.opened_at is not None else None,
@@ -384,15 +415,26 @@ def reduce_open_trades(
             snapshot = get_market_snapshot(row.ticker, force_refresh=True)
             if snapshot is not None and "matriks" in snapshot.source.lower():
                 _update_trade_with_price(row, float(snapshot.last_price))
+            current_realized_return = float(row.realized_return_percent or 0.0)
+            incremental_percent = target_realized - current_realized
+            incremental_return = _return_percent(float(row.current_price), float(row.entry_price))
+            weighted_return = (
+                ((current_realized * current_realized_return) + (incremental_percent * incremental_return))
+                / target_realized
+            )
+            weighted_price = float(row.entry_price) * (1 + (weighted_return / 100.0))
             row.profit_protected = True
             row.realized_percent = target_realized
-            row.realized_price = float(row.current_price)
-            row.realized_return_percent = _return_percent(float(row.realized_price), float(row.entry_price))
+            row.realized_price = round(weighted_price, 4)
+            row.realized_return_percent = round(weighted_return, 2)
             _close_if_fully_realized(row)
             row.source_scan_payload = {
                 **(row.source_scan_payload or {}),
                 "manual_reduce": {
                     "target_realized_percent": target_realized,
+                    "incremental_realized_percent": incremental_percent,
+                    "incremental_realized_price": float(row.current_price),
+                    "incremental_realized_return_percent": incremental_return,
                     "realized_price": row.realized_price,
                     "realized_return_percent": row.realized_return_percent,
                     "created_at": _utcnow().isoformat(),
@@ -486,6 +528,7 @@ def get_daily_paper_trade_report(trade_date: str | None = None, strategy_name: s
     hit_2_count = sum(1 for item in items if item.hit_2_percent)
     hit_3_count = sum(1 for item in items if item.hit_3_percent)
     hit_limit_count = sum(1 for item in items if item.hit_limit_up)
+    no_fill_count = sum(1 for item in items if item.execution_status == "no_fill" or item.outcome == "no_fill")
     profit_protected_count = sum(1 for item in items if item.profit_protected)
     win_count = sum(1 for item in finalized if item.outcome == "win")
     loss_count = sum(1 for item in finalized if item.outcome == "loss")
@@ -493,6 +536,7 @@ def get_daily_paper_trade_report(trade_date: str | None = None, strategy_name: s
     summary = (
         f"{report_date} icin {len(items)} paper trade acildi. "
         f"{hit_2_count} tanesi +%2, {hit_3_count} tanesi +%3, {hit_limit_count} tanesi tavan benzeri hareket gordu. "
+        f"{no_fill_count} tanesi emir gerceklesmedi sayildi. "
         f"Ortalama maksimum getiri %{average_max_return if average_max_return is not None else 0}."
     )
 
@@ -520,7 +564,8 @@ def get_daily_paper_trade_report(trade_date: str | None = None, strategy_name: s
 
 def create_manual_basket(request: ManualBasketCreateRequest) -> PaperTradeOpenResponse:
     ensure_runtime_schema()
-    opened_rows: list[PaperTrade] = []
+    returned_rows: list[PaperTrade] = []
+    actual_opened_count = 0
     strategy_name = request.strategy_name.strip() or "manual_morning_basket"
 
     with SessionLocal() as session:
@@ -541,26 +586,28 @@ def create_manual_basket(request: ManualBasketCreateRequest) -> PaperTradeOpenRe
                 continue
             snapshot = get_market_snapshot(ticker, force_refresh=True)
             current_price = float(snapshot.last_price) if snapshot is not None and "matriks" in snapshot.source.lower() else float(position.entry_price)
+            no_fill, no_fill_reason = _should_mark_no_fill(snapshot)
+            planned_capital = float(position.capital_allocated)
             row = PaperTrade(
                 ticker=ticker,
                 company_name=ticker,
                 sector="",
                 strategy_name=strategy_name,
                 scenario=position.scenario,
-                status="open",
-                outcome="open",
+                status="closed" if no_fill else "open",
+                outcome="no_fill" if no_fill else "open",
                 opportunity_score=0.0,
                 confidence=0.0,
-                data_quality="manual",
+                data_quality="no_fill" if no_fill else "manual",
                 entry_price=float(position.entry_price),
-                capital_allocated=float(position.capital_allocated),
+                capital_allocated=0.0 if no_fill else planned_capital,
                 current_price=current_price,
                 max_seen_price=max(float(position.entry_price), current_price),
                 min_seen_price=min(float(position.entry_price), current_price),
                 target_1_price=round(float(position.entry_price) * 1.02, 4),
                 target_2_price=round(float(position.entry_price) * 1.03, 4),
                 stop_price=round(float(position.entry_price) * 0.975, 4),
-                close_price=None,
+                close_price=current_price if no_fill else None,
                 current_return_percent=0.0,
                 max_intraday_return_percent=0.0,
                 min_intraday_return_percent=0.0,
@@ -573,28 +620,39 @@ def create_manual_basket(request: ManualBasketCreateRequest) -> PaperTradeOpenRe
                 realized_price=None,
                 realized_return_percent=0.0,
                 protected_stop_price=None,
-                source_scan_payload={"manual_position": position.model_dump()},
+                source_scan_payload={
+                    "manual_position": position.model_dump(),
+                    "execution_status": "no_fill" if no_fill else "filled",
+                    "execution_reason": no_fill_reason if no_fill else "Paper trade girisi gerceklesmis varsayildi.",
+                    "planned_capital": planned_capital,
+                },
                 why_now=["Manuel simülasyon sepeti"],
-                risks=[],
+                risks=[no_fill_reason] if no_fill and no_fill_reason else [],
                 opened_at=_utcnow(),
                 last_checked_at=_utcnow(),
+                closed_at=_utcnow() if no_fill else None,
             )
-            _update_trade_with_price(row, current_price)
+            if not no_fill:
+                _update_trade_with_price(row, current_price)
             session.add(row)
-            opened_rows.append(row)
-            existing_open_tickers.add(ticker)
+            returned_rows.append(row)
+            if no_fill:
+                skipped_count += 1
+            else:
+                actual_opened_count += 1
+                existing_open_tickers.add(ticker)
 
         session.commit()
-        for row in opened_rows:
+        for row in returned_rows:
             session.refresh(row)
         open_count = len(existing_open_tickers)
-        items = [_trade_item(row) for row in opened_rows]
+        items = [_trade_item(row) for row in returned_rows]
 
     return PaperTradeOpenResponse(
-        opened_count=len(items),
+        opened_count=actual_opened_count,
         skipped_count=skipped_count,
         open_trade_count=open_count,
-        tickers=[item.ticker for item in items],
+        tickers=[item.ticker for item in items if item.status == "open"],
         items=items,
     )
 

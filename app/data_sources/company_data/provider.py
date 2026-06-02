@@ -1,5 +1,6 @@
 from sqlalchemy import select
 
+from app.core.config import settings
 from app.data_sources.company_data.mock_provider import get_company_record as get_mock_company_record
 from app.data_sources.company_data.mock_provider import list_company_records as list_mock_company_records
 from app.db.models import CompanyMaster, UniverseMembership
@@ -34,6 +35,8 @@ def get_company_record(ticker: str) -> CompanyResponse | None:
             signal_enabled=row.signal_enabled,
             source=row.source,
         ))
+    if settings.production_data_strict:
+        return None
     mock_company = get_mock_company_record(normalized_ticker)
     return _apply_enrichment_overlay(mock_company) if mock_company is not None else None
 
@@ -74,4 +77,6 @@ def list_company_records(universe_code: str | None = None) -> list[CompanyRespon
                     ))
                     for row in rows
                 ]
+    if settings.production_data_strict:
+        return []
     return [_apply_enrichment_overlay(company) for company in list_mock_company_records()]

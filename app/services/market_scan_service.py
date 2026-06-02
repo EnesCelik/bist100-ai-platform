@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
@@ -13,6 +13,8 @@ from app.models.schemas import (
     CompanyResponse,
     LimitUpCandidateItem,
     LimitUpCandidateResponse,
+    IntradayUpsideCandidateItem,
+    IntradayUpsideScannerResponse,
     LiveMomentumRadarItem,
     LiveMomentumRadarResponse,
     MarketScanItem,
@@ -21,6 +23,8 @@ from app.models.schemas import (
     OpeningCandidateResponse,
     OpportunityScanItem,
     OpportunityScanResponse,
+    PreOpenLimitUpCandidateItem,
+    PreOpenLimitUpScannerResponse,
     PreMarketWatchlistItem,
     PreMarketWatchlistResponse,
     ScanSnapshotCreateResponse,
@@ -34,11 +38,20 @@ from app.services.event_service import get_event_summary
 from app.services.fundamental_service import get_fundamental_summary
 from app.services.institutional_flow_service import get_institutional_flow_summary
 from app.services.macro_event_service import get_macro_event_summary
+from app.services.market_calendar_service import check_bist_trading_day
 from app.services.news_impact_service import fetch_optional_news_impact
 from app.services.recommendation_policy import derive_recommendation
 from app.services.runtime_scheduler_service import get_runtime_health
 from app.services.replay_evaluation_service import build_trade_calibration_signals, get_trade_calibration_cached
 from app.services.signal_service import build_signal_summary_from_chart_feature
+from app.services.technical_indicator_text_service import (
+    describe_breakout_state,
+    describe_ichimoku_state,
+    describe_level_status,
+    describe_macd_state,
+    describe_signal_bias,
+    describe_trend_channel_state,
+)
 
 
 def _top_factors(evidence_items: list[AnalysisEvidence], impact: str, limit: int = 3) -> list[str]:
@@ -57,8 +70,13 @@ def _build_technical_summary(chart_summary) -> str | None:
         return None
 
     return (
-        f"{chart_summary.signal_bias} · {chart_summary.breakout_state} · "
-        f"{chart_summary.level_status} · RSI {chart_summary.rsi14}"
+        f"{describe_signal_bias(chart_summary.signal_bias)}. "
+        f"{describe_breakout_state(chart_summary.breakout_state)}. "
+        f"{describe_level_status(chart_summary.level_status)}. "
+        f"RSI {chart_summary.rsi14}. "
+        f"{describe_macd_state(chart_summary.macd_state, chart_summary.macd_score)} "
+        f"{describe_ichimoku_state(chart_summary.ichimoku_state, chart_summary.ichimoku_score)} "
+        f"{describe_trend_channel_state(chart_summary.trend_channel_state, chart_summary.trend_channel_score)}"
     )
 
 
@@ -1580,6 +1598,41 @@ def _pre_market_setup_type(score: float, close_position: float, previous_change:
     return "low_conviction_watch"
 
 
+def _previous_bist_trading_date(now_local: datetime | None = None) -> date:
+    current = (now_local or datetime.now(ZoneInfo("Europe/Istanbul"))).date()
+    cursor = current - timedelta(days=1)
+    for _ in range(14):
+        if check_bist_trading_day(cursor).is_trading_day:
+            return cursor
+        cursor -= timedelta(days=1)
+    return current - timedelta(days=1)
+
+
+def _candle_local_date(timestamp: str) -> date | None:
+    try:
+        parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=ZoneInfo("UTC"))
+    return parsed.astimezone(ZoneInfo("Europe/Istanbul")).date()
+
+
+def _pre_market_reference_candles(candles, expected_date: date):
+    dated_candles = [
+        (bar_date, candle)
+        for candle in candles
+        if (bar_date := _candle_local_date(candle.timestamp)) is not None
+    ]
+    eligible = [(bar_date, candle) for bar_date, candle in dated_candles if bar_date <= expected_date]
+    if not eligible:
+        return [], None
+    last_date, last = eligible[-1]
+    if last_date != expected_date:
+        return [], None
+    return [candle for _bar_date, candle in eligible], last
+
+
 def _score_pre_market_watchlist_item(company: CompanyResponse, universe_sources: list[str]) -> PreMarketWatchlistItem | None:
     ohlcv = get_market_ohlcv(company.ticker, timeframe="1G", bars=30)
     if ohlcv is None or not ohlcv.candles:
@@ -1587,8 +1640,10 @@ def _score_pre_market_watchlist_item(company: CompanyResponse, universe_sources:
     if "matriks" not in ohlcv.source.lower():
         return None
 
-    candles = ohlcv.candles
-    last = candles[-1]
+    expected_date = _previous_bist_trading_date()
+    candles, last = _pre_market_reference_candles(ohlcv.candles, expected_date)
+    if last is None:
+        return None
     if last.open <= 0 or last.close <= 0:
         return None
 
@@ -1732,6 +1787,192 @@ def scan_pre_market_watchlist(limit: int = 15, universe_code: str = "bist100") -
         total=len(limited_items),
         setup_counts=setup_counts,
         items=limited_items,
+    )
+
+
+def _pre_open_execution_action(item: PreMarketWatchlistItem) -> tuple[str, str, list[str], list[str]]:
+    required_confirmation = [
+        "Acilis sonrasi canli fiyat onceki kapanisin altina sert sarkmamali",
+        "Ilk canli snapshot pozitif veya yatay-guclu kalmali",
+    ]
+    risks = list(item.risks)
+
+    if item.previous_change_percent >= 8.0 and (item.volume_ratio or 0) < 0.75:
+        risks.append("Onceki gun tavan/sert prim var ama hacim teyidi zayif; acilista no-fill veya geri donus riski")
+        return (
+            "watch_only_no_order_flow",
+            "Tavan adayi olarak izlenir; emir/teorik eslesme verisi olmadigi icin al emrine cevrilmez.",
+            required_confirmation + ["Teorik eslesme fiyati ve alis emir yogunlugu teyidi gerekir"],
+            risks,
+        )
+
+    if item.previous_change_percent >= 8.0:
+        risks.append("Onceki gun cok primli; acilista kar realizasyonu gorulebilir")
+        return (
+            "watch_preopen",
+            "Sert hareket adayi; emir akisi gelmeden sadece takip listesinde tutulur.",
+            required_confirmation + ["Tavana yakin kilit varsa no_fill sayilmali"],
+            risks,
+        )
+
+    if item.pre_market_score >= 60 and item.close_position_percent >= 80:
+        return (
+            "watch_preopen",
+            "Kapanis gucu ve teknik yapi pozitif; acilis sonrasi teyit beklenir.",
+            required_confirmation + ["Ilk 15 dakikada hacim beklentinin ustune cikmali"],
+            risks,
+        )
+
+    return (
+        "secondary_watch",
+        "Aday izleme listesinde kalir; pre-open tavan senaryosu icin ek teyit gerekir.",
+        required_confirmation + ["Direnc/trigger seviyesi ustu kalicilik beklenmeli"],
+        risks,
+    )
+
+
+def scan_pre_open_limit_up_candidates(limit: int = 15, universe_code: str = "bist100") -> PreOpenLimitUpScannerResponse:
+    watchlist = scan_pre_market_watchlist(limit=max(limit * 3, limit), universe_code=universe_code)
+    candidates: list[PreOpenLimitUpCandidateItem] = []
+    for item in watchlist.items:
+        action, reason, confirmations, risks = _pre_open_execution_action(item)
+        score = item.pre_market_score
+        if item.previous_change_percent >= 6.0:
+            score += 8.0
+        if item.close_position_percent >= 90:
+            score += 6.0
+        if item.volume_ratio is not None and item.volume_ratio >= 1.5:
+            score += 5.0
+        if item.five_day_momentum_percent is not None and item.five_day_momentum_percent < -8.0:
+            score -= 7.0
+        score = round(_clamp(score, 0.0, 100.0), 2)
+        if score < 45.0:
+            continue
+        candidates.append(
+            PreOpenLimitUpCandidateItem(
+                ticker=item.ticker,
+                company_name=item.company_name,
+                sector=item.sector,
+                universe_sources=item.universe_sources,
+                limit_up_probability_score=score,
+                probability_bucket=_probability_bucket(score),
+                execution_action=action,
+                execution_reason=reason,
+                previous_close=item.previous_close,
+                previous_change_percent=item.previous_change_percent,
+                close_position_percent=item.close_position_percent,
+                volume_ratio=item.volume_ratio,
+                five_day_momentum_percent=item.five_day_momentum_percent,
+                trigger_price=item.trigger_price,
+                invalidation_price=item.invalidation_price,
+                order_flow_available=False,
+                required_confirmation=list(dict.fromkeys(confirmations)),
+                reasons=item.reasons,
+                risks=list(dict.fromkeys(risks))[:8],
+            )
+        )
+
+    ranked = sorted(
+        candidates,
+        key=lambda row: (
+            row.limit_up_probability_score,
+            row.previous_change_percent,
+            row.close_position_percent,
+            row.volume_ratio or 0,
+        ),
+        reverse=True,
+    )[: max(limit, 1)]
+    action_counts: dict[str, int] = {}
+    for item in ranked:
+        action_counts[item.execution_action] = action_counts.get(item.execution_action, 0) + 1
+
+    return PreOpenLimitUpScannerResponse(
+        generated_at=datetime.utcnow().isoformat(),
+        universe_size=watchlist.universe_size,
+        total=len(ranked),
+        order_flow_available=False,
+        action_counts=action_counts,
+        items=ranked,
+    )
+
+
+def _intraday_execution_action(item: LiveMomentumRadarItem) -> tuple[str, str, list[str]]:
+    risks = list(item.risks)
+    if item.is_limit_up_like or item.scenario == "limit_up_locked":
+        risks.append("Tavan/kilit gorunumu; emir gerceklesmeyebilir, paper trade no_fill sayilmali")
+        return "missed_no_fill", "Tavan/kilitli gorunum nedeniyle alis gerceklesebilir varsayilmaz.", risks
+    if item.change_percent < 0:
+        risks.append("Canli fiyat negatif; yukari senaryo teyitsiz")
+        return "avoid_reversal_risk", "Hisse negatif bolgede; momentum alimi icin teyit yok.", risks
+    if item.change_percent >= 8.5 and item.distance_to_limit_percent <= 1.5:
+        risks.append("Tavana cok yakin; kovalamaca ve no-fill riski yuksek")
+        return "watch_no_chase", "Tavana cok yakin oldugu icin alima cevrilmez, sadece izlenir.", risks
+    if item.spread_percent is not None and item.spread_percent > 0.75:
+        risks.append("Spread genis; kotu fiyattan yakalanma riski")
+        return "watch_spread_risk", "Momentum var ama spread genis; daha saglikli kademe beklenir.", risks
+    if item.scenario in {"strong_intraday_momentum", "positive_momentum", "limit_up_watch"}:
+        return "buyable_momentum", "Canli pozitif momentum var ve tavan kilidi/no-fill sinyali yok.", risks
+    return "watch_only", "Yukari potansiyel izlenir ancak alima cevirmek icin ek teyit gerekir.", risks
+
+
+def scan_intraday_upside_candidates(limit: int = 15, universe_code: str = "bist100") -> IntradayUpsideScannerResponse:
+    radar = scan_live_momentum_radar(limit=max(limit * 3, limit), universe_code=universe_code)
+    candidates: list[IntradayUpsideCandidateItem] = []
+    for item in radar.items:
+        action, reason, risks = _intraday_execution_action(item)
+        score = item.momentum_score
+        if action == "buyable_momentum":
+            score += 4.0
+        elif action in {"missed_no_fill", "avoid_reversal_risk"}:
+            score -= 18.0
+        elif action.startswith("watch"):
+            score -= 6.0
+        score = round(_clamp(score, 0.0, 100.0), 2)
+        candidates.append(
+            IntradayUpsideCandidateItem(
+                ticker=item.ticker,
+                company_name=item.company_name,
+                sector=item.sector,
+                universe_sources=item.universe_sources,
+                upside_score=score,
+                probability_bucket=_probability_bucket(score),
+                execution_action=action,
+                execution_reason=reason,
+                scenario=item.scenario,
+                last_price=item.last_price,
+                change_percent=item.change_percent,
+                distance_to_limit_percent=item.distance_to_limit_percent,
+                volume=item.volume,
+                expected_volume_ratio=item.expected_volume_ratio,
+                spread_percent=item.spread_percent,
+                is_limit_up_like=item.is_limit_up_like,
+                reasons=item.reasons,
+                risks=list(dict.fromkeys(risks))[:8],
+            )
+        )
+
+    ranked = sorted(
+        candidates,
+        key=lambda row: (
+            0 if row.execution_action == "missed_no_fill" else 1,
+            row.upside_score,
+            row.change_percent,
+            row.expected_volume_ratio or 0,
+        ),
+        reverse=True,
+    )[: max(limit, 1)]
+    action_counts: dict[str, int] = {}
+    for item in ranked:
+        action_counts[item.execution_action] = action_counts.get(item.execution_action, 0) + 1
+
+    return IntradayUpsideScannerResponse(
+        generated_at=datetime.utcnow().isoformat(),
+        universe_size=radar.universe_size,
+        positive_count=radar.positive_count,
+        total=len(ranked),
+        snapshot_available=radar.positive_count > 0,
+        action_counts=action_counts,
+        items=ranked,
     )
 
 

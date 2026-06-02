@@ -17,7 +17,7 @@ from app.services.market_scan_service import scan_opening_candidates
 from app.services.trading_agent_learning_weights_service import build_next_session_weight_adjustments
 from app.services.trading_agent_replay_service import evaluate_agent_candidate_replay
 from app.services.trading_agent_signal_service import detect_regime_from_opening_candidates, score_opening_candidate
-from app.services.trading_agent_telegram_service import send_morning_opening_telegram
+from app.services.trading_agent_telegram_service import send_intraday_momentum_telegram, send_morning_opening_telegram
 from app.services.trading_agent_service import (
     evaluate_open_positions,
     get_agent_daily_report,
@@ -124,6 +124,14 @@ def send_trading_agent_morning_telegram(
     force: bool = Query(default=False),
 ) -> TradingAgentMorningTelegramResponse:
     return send_morning_opening_telegram(force=force)
+
+
+@router.post("/agent/trading/intraday-telegram", response_model=TradingAgentMorningTelegramResponse)
+def send_trading_agent_intraday_telegram(
+    slot: str = Query(default="manual"),
+    force: bool = Query(default=False),
+) -> TradingAgentMorningTelegramResponse:
+    return send_intraday_momentum_telegram(slot=slot, force=force)
 
 
 @router.get("/agent/trading/status", response_model=TradingAgentStatusResponse)

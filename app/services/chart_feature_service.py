@@ -9,7 +9,7 @@ from app.data_sources.market_data.provider import get_market_ohlcv, get_market_s
 from app.models.schemas import ChartFeatureResponse
 
 CHART_FEATURE_SOURCE = "fallback_chart_feature_profile"
-REAL_CHART_FEATURE_SOURCE = "yahoo_delayed_chart_feature_engine"
+REAL_CHART_FEATURE_SOURCE = "ohlcv_chart_feature_engine"
 
 
 @dataclass(frozen=True)
@@ -106,6 +106,45 @@ class DerivedSignalMetrics:
 
 
 @dataclass(frozen=True)
+class DerivedMacdMetrics:
+    macd_line: float
+    macd_signal: float
+    macd_histogram: float
+    macd_state: str
+    macd_score: int
+
+
+@dataclass(frozen=True)
+class DerivedIchimokuMetrics:
+    tenkan: float
+    kijun: float
+    cloud_top: float
+    cloud_bottom: float
+    ichimoku_state: str
+    ichimoku_score: int
+
+
+@dataclass(frozen=True)
+class DerivedTrendChannelMetrics:
+    channel_upper: float
+    channel_mid: float
+    channel_lower: float
+    slope_percent: float
+    position_percent: float
+    channel_state: str
+    channel_score: int
+
+
+@dataclass(frozen=True)
+class DerivedFibonacciMetrics:
+    swing_high: float
+    swing_low: float
+    nearest_level: float
+    fib_position: str
+    fib_score: int
+
+
+@dataclass(frozen=True)
 class DerivedTradeLevels:
     trend_reference_level: float
     entry_zone_low: float
@@ -166,6 +205,10 @@ class ComputedTechnicalMetrics:
     atr_percent: float
     market_structure: str
     source: str
+    macd: DerivedMacdMetrics
+    ichimoku: DerivedIchimokuMetrics
+    trend_channel: DerivedTrendChannelMetrics
+    fibonacci: DerivedFibonacciMetrics
 
 
 
@@ -185,9 +228,11 @@ def _build_dataframe_from_ohlcv(ticker: str, timeframe: str = "1G", as_of_timest
         return None
     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
     df = df.sort_values("timestamp").reset_index(drop=True)
+    df.attrs["ohlcv_source"] = payload.source
     if as_of_timestamp:
         cutoff = pd.to_datetime(as_of_timestamp, utc=True)
         df = df[df["timestamp"] <= cutoff].reset_index(drop=True)
+        df.attrs["ohlcv_source"] = payload.source
     return df if not df.empty else None
 
 
@@ -226,6 +271,238 @@ def _compute_atr_percent(df: pd.DataFrame, period: int = 14) -> float:
         return 2.0
     close_value = max(float(df["close"].iloc[-1]), 1.0)
     return float((atr.iloc[-1] / close_value) * 100)
+
+
+def _default_advanced_metrics(
+    price: float,
+    support: float,
+    resistance: float,
+    trend: str | None = None,
+) -> tuple[DerivedMacdMetrics, DerivedIchimokuMetrics, DerivedTrendChannelMetrics, DerivedFibonacciMetrics]:
+    neutral_macd = DerivedMacdMetrics(0.0, 0.0, 0.0, "neutral", 0)
+    neutral_ichimoku = DerivedIchimokuMetrics(
+        tenkan=_round(price),
+        kijun=_round(price),
+        cloud_top=_round(max(price, resistance)),
+        cloud_bottom=_round(min(price, support)),
+        ichimoku_state="cloud_unknown",
+        ichimoku_score=0,
+    )
+    price_range = max(resistance - support, 0.0001)
+    position = ((price - support) / price_range) * 100
+    neutral_channel = DerivedTrendChannelMetrics(
+        channel_upper=_round(resistance),
+        channel_mid=_round((support + resistance) / 2),
+        channel_lower=_round(support),
+        slope_percent=0.0,
+        position_percent=_round(max(0.0, min(position, 100.0))),
+        channel_state=f"{trend or 'neutral'}_channel_unknown",
+        channel_score=0,
+    )
+    neutral_fib = DerivedFibonacciMetrics(
+        swing_high=_round(resistance),
+        swing_low=_round(support),
+        nearest_level=_round(price),
+        fib_position="fib_unknown",
+        fib_score=0,
+    )
+    return neutral_macd, neutral_ichimoku, neutral_channel, neutral_fib
+
+
+def _compute_macd_metrics(close: pd.Series) -> DerivedMacdMetrics:
+    if len(close) < 35:
+        return _default_advanced_metrics(float(close.iloc[-1]), float(close.min()), float(close.max()))[0]
+    ema12 = close.ewm(span=12, adjust=False).mean()
+    ema26 = close.ewm(span=26, adjust=False).mean()
+    macd_line_series = ema12 - ema26
+    signal_series = macd_line_series.ewm(span=9, adjust=False).mean()
+    histogram_series = macd_line_series - signal_series
+    macd_line = float(macd_line_series.iloc[-1])
+    signal = float(signal_series.iloc[-1])
+    histogram = float(histogram_series.iloc[-1])
+    previous_histogram = float(histogram_series.iloc[-2]) if len(histogram_series) >= 2 else histogram
+    expanding = histogram > previous_histogram
+
+    if macd_line > signal and histogram > 0:
+        state = "bullish_expanding" if expanding else "bullish_fading"
+        score = 2 if expanding else 1
+    elif macd_line < signal and histogram < 0:
+        state = "bearish_expanding" if histogram < previous_histogram else "bearish_fading"
+        score = -2 if histogram < previous_histogram else -1
+    elif macd_line > signal:
+        state = "early_bullish_cross"
+        score = 1
+    elif macd_line < signal:
+        state = "early_bearish_cross"
+        score = -1
+    else:
+        state = "neutral"
+        score = 0
+
+    return DerivedMacdMetrics(_round(macd_line), _round(signal), _round(histogram), state, score)
+
+
+def _compute_ichimoku_metrics(df: pd.DataFrame) -> DerivedIchimokuMetrics:
+    if len(df) < 52:
+        price = float(df["close"].iloc[-1])
+        return _default_advanced_metrics(price, float(df["low"].min()), float(df["high"].max()))[1]
+
+    high = df["high"]
+    low = df["low"]
+    close = df["close"]
+    tenkan = (high.rolling(9).max() + low.rolling(9).min()) / 2
+    kijun = (high.rolling(26).max() + low.rolling(26).min()) / 2
+    senkou_a = (tenkan + kijun) / 2
+    senkou_b = (high.rolling(52).max() + low.rolling(52).min()) / 2
+    tenkan_value = float(tenkan.iloc[-1])
+    kijun_value = float(kijun.iloc[-1])
+    span_a = float(senkou_a.iloc[-1])
+    span_b = float(senkou_b.iloc[-1])
+    price = float(close.iloc[-1])
+    cloud_top = max(span_a, span_b)
+    cloud_bottom = min(span_a, span_b)
+
+    if price > cloud_top and tenkan_value > kijun_value and span_a >= span_b:
+        state, score = "above_cloud_bullish", 2
+    elif price > cloud_top:
+        state, score = "above_cloud_mixed", 1
+    elif price < cloud_bottom and tenkan_value < kijun_value and span_a <= span_b:
+        state, score = "below_cloud_bearish", -2
+    elif price < cloud_bottom:
+        state, score = "below_cloud_mixed", -1
+    else:
+        state, score = "inside_cloud_neutral", 0
+
+    return DerivedIchimokuMetrics(
+        tenkan=_round(tenkan_value),
+        kijun=_round(kijun_value),
+        cloud_top=_round(cloud_top),
+        cloud_bottom=_round(cloud_bottom),
+        ichimoku_state=state,
+        ichimoku_score=score,
+    )
+
+
+def _linear_regression_line(values: list[float]) -> tuple[float, float]:
+    n = len(values)
+    if n <= 1:
+        return 0.0, values[-1] if values else 0.0
+    x_mean = (n - 1) / 2
+    y_mean = sum(values) / n
+    numerator = sum((index - x_mean) * (value - y_mean) for index, value in enumerate(values))
+    denominator = sum((index - x_mean) ** 2 for index in range(n)) or 1.0
+    slope = numerator / denominator
+    intercept = y_mean - slope * x_mean
+    return slope, intercept
+
+
+def _compute_trend_channel_metrics(df: pd.DataFrame, window: int = 60) -> DerivedTrendChannelMetrics:
+    recent = df.tail(min(window, len(df)))
+    close_values = [float(value) for value in recent["close"].tolist()]
+    price = float(recent["close"].iloc[-1])
+    if len(close_values) < 20:
+        return _default_advanced_metrics(price, float(recent["low"].min()), float(recent["high"].max()))[2]
+
+    slope, intercept = _linear_regression_line(close_values)
+    fitted = [intercept + slope * index for index in range(len(close_values))]
+    residuals = [abs(value - fitted[index]) for index, value in enumerate(close_values)]
+    channel_width = max(sum(residuals) / len(residuals) * 1.8, price * 0.01)
+    mid = fitted[-1]
+    upper = mid + channel_width
+    lower = mid - channel_width
+    span = max(upper - lower, 0.0001)
+    raw_position = ((price - lower) / span) * 100
+    position = max(0.0, min(raw_position, 100.0))
+    slope_percent = ((fitted[-1] - fitted[0]) / max(abs(fitted[0]), 1.0)) * 100
+
+    if slope_percent >= 2.0 and raw_position < -8:
+        state, score = "rising_channel_breakdown_watch", -1
+    elif slope_percent >= 2.0 and raw_position > 110:
+        state, score = "rising_channel_overextended", -1
+    elif slope_percent >= 2.0 and 25 <= position <= 78:
+        state, score = "rising_mid_channel", 2
+    elif slope_percent >= 2.0 and position > 86:
+        state, score = "rising_upper_channel_extended", 0
+    elif slope_percent >= 2.0:
+        state, score = "rising_channel_pullback", 1
+    elif slope_percent <= -2.0 and raw_position < -8:
+        state, score = "falling_channel_breakdown", -2
+    elif slope_percent <= -2.0 and position < 35:
+        state, score = "falling_lower_channel", -2
+    elif slope_percent <= -2.0:
+        state, score = "falling_channel", -1
+    elif position > 85:
+        state, score = "sideways_upper_channel", -1
+    elif position < 20:
+        state, score = "sideways_lower_channel", 1
+    else:
+        state, score = "sideways_mid_channel", 0
+
+    return DerivedTrendChannelMetrics(
+        channel_upper=_round(upper),
+        channel_mid=_round(mid),
+        channel_lower=_round(lower),
+        slope_percent=_round(slope_percent),
+        position_percent=_round(position),
+        channel_state=state,
+        channel_score=score,
+    )
+
+
+def _compute_fibonacci_metrics(df: pd.DataFrame, window: int = 80) -> DerivedFibonacciMetrics:
+    recent = df.tail(min(window, len(df)))
+    price = float(recent["close"].iloc[-1])
+    swing_high = float(recent["high"].max())
+    swing_low = float(recent["low"].min())
+    swing_range = swing_high - swing_low
+    if swing_range <= 0:
+        return _default_advanced_metrics(price, swing_low, swing_high)[3]
+
+    levels = {
+        "fib_236": swing_high - swing_range * 0.236,
+        "fib_382": swing_high - swing_range * 0.382,
+        "fib_500": swing_high - swing_range * 0.500,
+        "fib_618": swing_high - swing_range * 0.618,
+        "fib_786": swing_high - swing_range * 0.786,
+    }
+    nearest_name, nearest_value = min(levels.items(), key=lambda item: abs(price - item[1]))
+    tolerance = max(price * 0.008, swing_range * 0.025)
+
+    if price >= levels["fib_236"]:
+        position, score = "near_swing_high", 0
+    elif price >= levels["fib_382"]:
+        position, score = "above_382", 1
+    elif price >= levels["fib_618"]:
+        position, score = "between_382_618", 0
+    elif price >= levels["fib_786"]:
+        position, score = "below_618_watch", -1
+    else:
+        position, score = "deep_retracement", -2
+
+    if abs(price - nearest_value) <= tolerance:
+        if nearest_name in {"fib_382", "fib_500", "fib_618"} and position != "deep_retracement":
+            score += 1
+            position = f"{position}_near_reaction_level"
+        elif nearest_name == "fib_786":
+            score -= 1
+            position = f"{position}_near_risk_level"
+
+    return DerivedFibonacciMetrics(
+        swing_high=_round(swing_high),
+        swing_low=_round(swing_low),
+        nearest_level=_round(float(nearest_value)),
+        fib_position=position,
+        fib_score=max(-2, min(score, 2)),
+    )
+
+
+def _compute_advanced_metrics(df: pd.DataFrame) -> tuple[DerivedMacdMetrics, DerivedIchimokuMetrics, DerivedTrendChannelMetrics, DerivedFibonacciMetrics]:
+    return (
+        _compute_macd_metrics(df["close"]),
+        _compute_ichimoku_metrics(df),
+        _compute_trend_channel_metrics(df),
+        _compute_fibonacci_metrics(df),
+    )
 
 
 
@@ -281,6 +558,10 @@ def _compute_metrics_from_ohlcv(ticker: str, timeframe: str = "1G", as_of_timest
     support = min(support, current_price)
     resistance = max(resistance, current_price)
 
+    ohlcv_source = str(df.attrs.get("ohlcv_source") or "").lower()
+    source = "matriks_ohlcv_chart_feature_engine" if "matriks" in ohlcv_source else REAL_CHART_FEATURE_SOURCE
+    macd_metrics, ichimoku_metrics, trend_channel_metrics, fibonacci_metrics = _compute_advanced_metrics(df)
+
     return ComputedTechnicalMetrics(
         price=current_price,
         ema20=ema20,
@@ -293,7 +574,11 @@ def _compute_metrics_from_ohlcv(ticker: str, timeframe: str = "1G", as_of_timest
         resistance=resistance,
         atr_percent=atr_percent,
         market_structure=market_structure,
-        source=REAL_CHART_FEATURE_SOURCE,
+        source=source,
+        macd=macd_metrics,
+        ichimoku=ichimoku_metrics,
+        trend_channel=trend_channel_metrics,
+        fibonacci=fibonacci_metrics,
     )
 
 
@@ -310,6 +595,12 @@ def _resolve_runtime_metrics(ticker: str, profile: ChartFeatureProfile, timefram
     else:
         price = market_snapshot.last_price
         current_volume = market_snapshot.volume
+    fallback_macd, fallback_ichimoku, fallback_channel, fallback_fibonacci = _default_advanced_metrics(
+        price=price,
+        support=profile.support,
+        resistance=profile.resistance,
+        trend=profile.market_structure,
+    )
 
     return ComputedTechnicalMetrics(
         price=price,
@@ -324,6 +615,10 @@ def _resolve_runtime_metrics(ticker: str, profile: ChartFeatureProfile, timefram
         atr_percent=profile.atr_percent,
         market_structure=profile.market_structure,
         source=CHART_FEATURE_SOURCE,
+        macd=fallback_macd,
+        ichimoku=fallback_ichimoku,
+        trend_channel=fallback_channel,
+        fibonacci=fallback_fibonacci,
     )
 
 
@@ -509,6 +804,52 @@ def _build_negative_factors(
     return factors[:5]
 
 
+def _build_advanced_factors(
+    macd: DerivedMacdMetrics,
+    ichimoku: DerivedIchimokuMetrics,
+    trend_channel: DerivedTrendChannelMetrics,
+    fibonacci: DerivedFibonacciMetrics,
+) -> tuple[list[str], list[str]]:
+    positive_factors: list[str] = []
+    negative_factors: list[str] = []
+
+    if macd.macd_state in {"bullish_expanding", "early_bullish_cross"}:
+        positive_factors.append("MACD yukari momentumun guclendigini veya erken pozitif kesişimi destekliyor")
+    elif macd.macd_state == "bullish_fading":
+        negative_factors.append("MACD pozitif olsa da histogram zayiflayarak momentum kaybi riski uretiyor")
+    elif macd.macd_state in {"bearish_expanding", "early_bearish_cross"}:
+        negative_factors.append("MACD asagi momentum veya negatif kesişim riski gosteriyor")
+
+    if ichimoku.ichimoku_state == "above_cloud_bullish":
+        positive_factors.append("Ichimoku bulutu fiyati destekliyor; fiyat bulut ustunde ve Tenkan-Kijun pozitif")
+    elif ichimoku.ichimoku_state == "above_cloud_mixed":
+        positive_factors.append("Fiyat Ichimoku bulutu ustunde kalarak ana trendde pozitif alan koruyor")
+    elif ichimoku.ichimoku_state == "inside_cloud_neutral":
+        negative_factors.append("Fiyat Ichimoku bulutu icinde; yon teyidi zayif ve karar bolgesi devam ediyor")
+    elif ichimoku.ichimoku_state.startswith("below_cloud"):
+        negative_factors.append("Fiyat Ichimoku bulutu altinda; trend kalitesi zayif")
+
+    if trend_channel.channel_state in {"rising_mid_channel", "rising_channel_pullback"}:
+        positive_factors.append("Trend kanali yukari egimli ve fiyat kanalda saglikli bolgede kaliyor")
+    elif trend_channel.channel_state in {"rising_upper_channel_extended", "rising_channel_overextended"}:
+        negative_factors.append("Yukselen kanal ust bandina yakinlik yeni alimda kovalamaca riskini artiriyor")
+    elif trend_channel.channel_state == "rising_channel_breakdown_watch":
+        negative_factors.append("Yukselen kanal altina sarkma trendin yorulduguna dair erken uyari uretiyor")
+    elif trend_channel.channel_state in {"falling_channel", "falling_lower_channel"}:
+        negative_factors.append("Trend kanali asagi egimli; tepki denemeleri satisla karsilasabilir")
+    elif trend_channel.channel_state == "sideways_lower_channel":
+        positive_factors.append("Yatay kanal alt bandina yakinlik tepki potansiyeli olusturuyor")
+    elif trend_channel.channel_state == "sideways_upper_channel":
+        negative_factors.append("Yatay kanal ust bandina yakinlik kar realizasyonu riskini artiriyor")
+
+    if fibonacci.fib_score > 0:
+        positive_factors.append("Fibonacci konumu geri cekilme sonrasi tepki seviyelerini destekliyor")
+    elif fibonacci.fib_score < 0:
+        negative_factors.append("Fibonacci konumu derin geri cekilme veya kritik seviye kirilim riski uretiyor")
+
+    return positive_factors[:4], negative_factors[:4]
+
+
 
 def _derive_trade_levels(
     price: float,
@@ -626,6 +967,10 @@ def _derive_signal_metrics(
     level_metrics: DerivedLevelMetrics,
     trade_levels: DerivedTradeLevels,
     atr_percent: float,
+    macd: DerivedMacdMetrics,
+    ichimoku: DerivedIchimokuMetrics,
+    trend_channel: DerivedTrendChannelMetrics,
+    fibonacci: DerivedFibonacciMetrics,
 ) -> DerivedSignalMetrics:
     score = 0
 
@@ -653,6 +998,10 @@ def _derive_signal_metrics(
 
     score += breakout_metrics.breakout_score
     score += structure_metrics.structure_score
+    score += macd.macd_score
+    score += ichimoku.ichimoku_score
+    score += trend_channel.channel_score
+    score += fibonacci.fib_score
 
     if level_metrics.level_status == "near_support" and structure_metrics.structure_bias == "bullish":
         score += 1
@@ -671,6 +1020,8 @@ def _derive_signal_metrics(
 
     if trend == "neutral" and trade_levels.trade_setup == "range_trade" and level_metrics.price_position_percent >= 75:
         score -= 1
+
+    score = max(-10, min(score, 10))
 
     if score >= 3:
         signal_bias = "bullish"
@@ -759,6 +1110,14 @@ def get_chart_feature_summary(ticker: str, timeframe: str = "1G", as_of_timestam
         level_metrics=level_metrics,
         trade_levels=trade_levels,
     )
+    advanced_positive_factors, advanced_negative_factors = _build_advanced_factors(
+        metrics.macd,
+        metrics.ichimoku,
+        metrics.trend_channel,
+        metrics.fibonacci,
+    )
+    positive_factors = (positive_factors + advanced_positive_factors)[:7]
+    negative_factors = (negative_factors + advanced_negative_factors)[:7]
     trade_level_positive_factors, trade_level_negative_factors = _build_trade_level_factors(
         price=metrics.price,
         trend=trend,
@@ -777,6 +1136,10 @@ def get_chart_feature_summary(ticker: str, timeframe: str = "1G", as_of_timestam
         level_metrics=level_metrics,
         trade_levels=trade_levels,
         atr_percent=metrics.atr_percent,
+        macd=metrics.macd,
+        ichimoku=metrics.ichimoku,
+        trend_channel=metrics.trend_channel,
+        fibonacci=metrics.fibonacci,
     )
 
     return ChartFeatureResponse(
@@ -788,6 +1151,29 @@ def get_chart_feature_summary(ticker: str, timeframe: str = "1G", as_of_timestam
         ema200=_round(metrics.ema200),
         ema_alignment=ema_alignment,
         rsi14=_round(metrics.rsi14),
+        macd_line=metrics.macd.macd_line,
+        macd_signal=metrics.macd.macd_signal,
+        macd_histogram=metrics.macd.macd_histogram,
+        macd_state=metrics.macd.macd_state,
+        macd_score=metrics.macd.macd_score,
+        ichimoku_tenkan=metrics.ichimoku.tenkan,
+        ichimoku_kijun=metrics.ichimoku.kijun,
+        ichimoku_cloud_top=metrics.ichimoku.cloud_top,
+        ichimoku_cloud_bottom=metrics.ichimoku.cloud_bottom,
+        ichimoku_state=metrics.ichimoku.ichimoku_state,
+        ichimoku_score=metrics.ichimoku.ichimoku_score,
+        trend_channel_upper=metrics.trend_channel.channel_upper,
+        trend_channel_mid=metrics.trend_channel.channel_mid,
+        trend_channel_lower=metrics.trend_channel.channel_lower,
+        trend_channel_slope_percent=metrics.trend_channel.slope_percent,
+        trend_channel_position_percent=metrics.trend_channel.position_percent,
+        trend_channel_state=metrics.trend_channel.channel_state,
+        trend_channel_score=metrics.trend_channel.channel_score,
+        fibonacci_swing_high=metrics.fibonacci.swing_high,
+        fibonacci_swing_low=metrics.fibonacci.swing_low,
+        fibonacci_nearest_level=metrics.fibonacci.nearest_level,
+        fibonacci_position=metrics.fibonacci.fib_position,
+        fibonacci_score=metrics.fibonacci.fib_score,
         current_volume=metrics.current_volume,
         avg_volume=metrics.avg_volume,
         volume_ratio=_round(volume_ratio),

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Query
 
+from app.core.config import settings
 from app.models.schemas import CompanyListResponse, CompanyMigrationResponse, CompanyProfileEnrichmentResponse, CompanyProfileUniverseRefreshResponse, CompanyResponse, UniverseSeedListResponse, UniverseSeedLoadResponse, UniverseUpsertRequest, UniverseUpsertResponse
 from app.services.company_service import fetch_company
 from app.services.company_universe_service import fetch_company_list, list_universe_seed_files, load_universe_seed, migrate_mock_companies_to_db, upsert_company_universe
@@ -27,6 +28,8 @@ def migrate_companies_from_mock(
     universe_code: str = Query(default="demo_core"),
     universe_name: str = Query(default="Demo Core Universe"),
 ) -> CompanyMigrationResponse:
+    if settings.production_data_strict:
+        raise HTTPException(status_code=403, detail="Mock company migration is disabled while PRODUCTION_DATA_STRICT=true")
     return migrate_mock_companies_to_db(universe_code=universe_code, universe_name=universe_name)
 
 

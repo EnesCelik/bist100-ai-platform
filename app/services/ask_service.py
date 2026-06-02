@@ -12,6 +12,7 @@ from app.services.news_impact_service import fetch_optional_news_impact
 from app.services.recommendation_policy import derive_recommendation
 from app.services.replay_evaluation_service import build_trade_calibration_signals, get_trade_calibration_cached
 from app.services.signal_service import get_signal_summary
+from app.services.technical_indicator_text_service import humanize_label
 
 
 def _pick_first(evidence_items: list[AnalysisEvidence], category: str, impact: str) -> str | None:
@@ -140,15 +141,28 @@ def _is_generic_market_pick_question(question: str) -> bool:
         "alima en uygun hisse",
         "bugun alinabilecek hisse",
         "bugun alinabilecek hisseler",
+        "bugün alınabilecek hisse",
+        "bugün alınabilecek hisseler",
+        "bugun hangi hisse alinir",
+        "bugün hangi hisse alınır",
+        "hangi hisse alinir",
+        "hangi hisse alınır",
+        "ne alalim",
+        "ne alalım",
         "en uygun hisse",
         "en iyi hisse",
         "hangi hisseler alinabilir",
         "hangi hisse alinabilir",
+        "hangi hisseler alınabilir",
+        "hangi hisse alınabilir",
         "hangi hisseler one cikiyor",
         "alinabilecek hisseler",
         "tavan ihtimali",
         "bugun hangi hisse tavan yapar",
+        "bugun hangi hisse tavan yapabilir",
+        "bugün hangi hisse tavan yapabilir",
         "hangi hisse tavan yapar",
+        "hangi hisse tavan yapabilir",
         "tavan yapabilecek hisse",
         "tavan yapma ihtimali",
         "tavan olabilir",
@@ -205,7 +219,10 @@ def _scan_item_to_recommendation(item) -> RecommendationPolicyResult:
         action=item.action,
         score=item.score,
         weighted_score=item.weighted_score,
-        summary=f"Scan siralamasinda one cikan aday {item.ticker}; weighted score {item.weighted_score} ve confidence {item.confidence}.",
+        summary=(
+            f"Tarama siralamasinda one cikan aday {item.ticker}; "
+            f"agirlikli skor {item.weighted_score} ve guven {item.confidence}."
+        ),
     )
 
 
@@ -224,10 +241,13 @@ def _is_today_sensitive_question(question: str) -> bool:
     lowered = _question_lower(question)
     markers = [
         "bugun",
+        "bugün",
         "su an",
         "şu an",
         "simdi",
+        "şimdi",
         "anlik",
+        "anlık",
         "tavan",
         "gun ici",
         "gün içi",
@@ -240,6 +260,7 @@ def _is_limit_up_question(question: str) -> bool:
     markers = [
         "tavan ihtimali",
         "tavan yapar",
+        "tavan yapabilir",
         "tavan olabilir",
         "tavan yapabilecek",
         "tavana gider",
@@ -298,22 +319,22 @@ def _build_trading_agent_response(question: str) -> AskResponse:
         for item in status.open_trades[:8]
     ]
     decision_lines = [
-        f"{item.ticker or '-'} {item.action} ({item.phase}): {item.rationale}"
+        f"{item.ticker or '-'} {humanize_label(item.action)} ({humanize_label(item.phase)}): {item.rationale}"
         for item in status.latest_decisions[:5]
     ]
     action_lines = [
-        f"{item.ticker}: {item.action} - {item.rationale}"
+        f"{item.ticker}: {humanize_label(item.action)} - {item.rationale}"
         for item in status.position_decisions[:6]
     ]
 
     if trade_lines:
         answer = (
-            f"Agent durumuna gore aktif strateji {status.active_strategy_name}. "
+            f"Agent durumuna gore aktif strateji {humanize_label(status.active_strategy_name) or 'yok'}. "
             f"Acik paper trade sayisi {status.open_trade_count}, kapanmis trade sayisi {status.closed_trade_count}, "
             f"deployed sermaye {status.deployed_capital} TL, portfoy equity {status.portfolio_equity} TL, "
             f"kullanilabilir nakit {status.available_cash} TL, realize PnL {status.total_realized_pnl} TL, "
             f"acik PnL {status.total_open_unrealized_pnl} TL, toplam PnL {status.total_position_pnl} TL, "
-            f"risk seviyesi {status.portfolio_risk_level}. "
+            f"risk seviyesi {humanize_label(status.portfolio_risk_level)}. "
             f"Pozisyonlar: {'; '.join(trade_lines)}."
         )
     else:
@@ -321,7 +342,7 @@ def _build_trading_agent_response(question: str) -> AskResponse:
 
     if action_lines:
         answer += f" Aksiyon plani: {'; '.join(action_lines)}."
-    answer += f" Nakit karari: {status.cash_action}. {status.cash_rationale}"
+    answer += f" Nakit karari: {humanize_label(status.cash_action)}. {status.cash_rationale}"
     answer += f" Sonraki kontrol onerisi: {status.recommended_next_check_minutes} dk."
     if decision_lines:
         answer += f" Son karar izleri: {'; '.join(decision_lines)}."
@@ -342,7 +363,13 @@ def _build_trading_agent_response(question: str) -> AskResponse:
 
 
 def _build_generic_market_pick_response(question: str) -> AskResponse:
-    from app.services.market_scan_service import get_scan_universe_coverage, scan_limit_up_candidates, scan_market, scan_pre_market_watchlist
+    from app.services.market_scan_service import (
+        get_scan_universe_coverage,
+        scan_intraday_upside_candidates,
+        scan_market,
+        scan_pre_market_watchlist,
+        scan_pre_open_limit_up_candidates,
+    )
 
     if _is_opening_candidate_question(question):
         pre_market_scan = scan_pre_market_watchlist(limit=5)
@@ -364,16 +391,19 @@ def _build_generic_market_pick_response(question: str) -> AskResponse:
                 citations=[],
             )
         top = pre_market_scan.items[0]
-        alternates = ", ".join(f"{item.ticker} ({item.probability_bucket}, skor {item.pre_market_score})" for item in pre_market_scan.items[1:4])
+        alternates = ", ".join(
+            f"{item.ticker} ({humanize_label(item.probability_bucket)}, skor {item.pre_market_score})"
+            for item in pre_market_scan.items[1:4]
+        )
         reason_text = "; ".join(top.reasons[:3])
         risk_text = "; ".join(top.risks[:2])
         answer = (
             f"Kesin acilis tahmini veremem; ama pre-market izleme taramasina gore en guclu aday {top.ticker} ({top.company_name}). "
             f"Bu cevap {coverage.scanned_universe_size} hisselik izleme evreni taranarak uretildi "
             f"({coverage.base_universe_size} ana evren + {len(coverage.configured_momentum_tickers)} ek momentum ticker). "
-            f"Pre-market skoru {top.pre_market_score}/100, kategori {top.probability_bucket}, onceki kapanis {top.previous_close}, "
+            f"Acilis oncesi skoru {top.pre_market_score}/100, kategori {humanize_label(top.probability_bucket)}, onceki kapanis {top.previous_close}, "
             f"onceki degisim %{top.previous_change_percent}, kapanis gucu {top.close_position_percent}, hacim orani {top.volume_ratio}. "
-            f"Izleme tetigi {top.trigger_price}, iptal seviyesi {top.invalidation_price}, kurgu {top.setup_type}. "
+            f"Izleme tetigi {top.trigger_price}, iptal seviyesi {top.invalidation_price}, kurgu {humanize_label(top.setup_type)}. "
             f"Gerekce: {reason_text}."
         )
         if risk_text:
@@ -393,27 +423,33 @@ def _build_generic_market_pick_response(question: str) -> AskResponse:
         )
 
     if _is_limit_up_question(question):
-        limit_scan = scan_limit_up_candidates(limit=5)
+        limit_scan = scan_pre_open_limit_up_candidates(limit=5)
         if not limit_scan.items:
             return AskResponse(
                 question=question,
                 route_type="analysis_query",
-                answer="Su an tavan aday taramasindan yeterince guclu aday cikmadi.",
-                used_sources=["limit_up_candidate_scan"],
+                answer="Pre-open tavan aday taramasindan yeterince guclu izleme adayi cikmadi.",
+                used_sources=["pre_open_limit_up_scanner"],
                 confidence=0.35,
-                reasoning_summary="Tavan odakli soru icin ozel limit-up candidate taramasi calisti ancak esik ustu aday donmedi.",
+                reasoning_summary="Tavan odakli soru icin onceki kapanis gucu, hacim, 5 gun momentum ve teknik kirilim uzerinden pre-open limit-up scanner calisti ancak esik ustu aday donmedi.",
                 recommendation=None,
                 analysis_evidence=[],
                 citations=[],
             )
         top = limit_scan.items[0]
-        alternates = ", ".join(f"{item.ticker} ({item.probability_bucket}, skor {item.limit_up_score})" for item in limit_scan.items[1:4])
+        alternates = ", ".join(
+            f"{item.ticker} ({humanize_label(item.execution_action)}, skor {item.limit_up_probability_score})"
+            for item in limit_scan.items[1:4]
+        )
         reason_text = "; ".join(top.reasons[:3])
         risk_text = "; ".join(top.risks[:2])
         answer = (
-            f"Kesin tavan tahmini veremem; ama tavan odakli taramaya gore su an en guclu aday {top.ticker} ({top.company_name}). "
-            f"Limit-up skoru {top.limit_up_score}/100, kategori {top.probability_bucket}, son fiyat {top.last_price}, gunluk degisim %{top.change_percent}, tavana kalan yaklasik %{top.distance_to_limit_percent}. "
-            f"Tetik seviye {top.entry_trigger}, iptal seviyesi {top.invalidation_level}. "
+            f"Kesin tavan tahmini veremem; ama pre-open tavan izleme taramasina gore en guclu aday {top.ticker} ({top.company_name}). "
+            f"Tavan olasilik skoru {top.limit_up_probability_score}/100, aksiyon {humanize_label(top.execution_action)}. "
+            f"Onemli ayrim: emir/teorik eslesme verisi olmadigi icin bu al emri degil, izleme sinyalidir. "
+            f"Onceki kapanis {top.previous_close}, onceki degisim %{top.previous_change_percent}, kapanis gucu {top.close_position_percent}, hacim orani {top.volume_ratio}. "
+            f"Tetik seviye {top.trigger_price}, iptal seviyesi {top.invalidation_price}. "
+            f"Aksiyon gerekcesi: {top.execution_reason}. "
             f"Gerekce: {reason_text}."
         )
         if risk_text:
@@ -424,9 +460,60 @@ def _build_generic_market_pick_response(question: str) -> AskResponse:
             question=question,
             route_type="analysis_query",
             answer=answer,
-            used_sources=["limit_up_candidate_scan", "matriks_market_data_tool", "chart_feature_signal_service"],
+            used_sources=["pre_open_limit_up_scanner", "matriks_ohlcv", "chart_feature_signal_service"],
             confidence=0.72 if top.probability_bucket == "high" else 0.62,
-            reasoning_summary="Tavan sorusu, gunluk yuzde ivmesi, hacim baskisi, 1H/4H teknik durum ve bid/ask spread proxy'si ile ozel limit-up candidate skoru kullanilarak yanitlandi.",
+            reasoning_summary="Tavan sorusu pre-open izleme mantigiyla yanitlandi; emir/teorik eslesme verisi olmadigi icin adaylar buyable degil watch/preopen olarak isaretlendi.",
+            recommendation=None,
+            analysis_evidence=[],
+            citations=[],
+        )
+
+    if _is_today_sensitive_question(question):
+        upside_scan = scan_intraday_upside_candidates(limit=5)
+        if upside_scan.items:
+            buyable = [item for item in upside_scan.items if item.execution_action == "buyable_momentum"]
+            top = buyable[0] if buyable else upside_scan.items[0]
+            alternates = ", ".join(
+                f"{item.ticker} ({humanize_label(item.execution_action)}, skor {item.upside_score})"
+                for item in upside_scan.items[1:4]
+            )
+            answer = (
+                f"Gun ici yukari potansiyel taramasina gore one cikan aday {top.ticker}. "
+                f"Aksiyon {humanize_label(top.execution_action)}; gerekce: {top.execution_reason}. "
+                f"Skor {top.upside_score}/100, son fiyat {top.last_price}, degisim %{top.change_percent}, tavana kalan %{top.distance_to_limit_percent}. "
+                "Bu tarama tavan kilitli hisseleri alinir saymaz; emir gerceklesmesi zor adaylari ayri siniflandirir."
+            )
+            if alternates:
+                answer += f" Alternatifler: {alternates}."
+            return AskResponse(
+                question=question,
+                route_type="analysis_query",
+                answer=answer,
+                used_sources=["intraday_upside_scanner", "matriks_market_data_tool", "chart_feature_signal_service"],
+                confidence=0.68,
+                reasoning_summary="Gun ici soru icin live momentum radar uzerine actionability/no-fill ayrimi ekleyen intraday upside scanner kullanildi.",
+                recommendation=None,
+                analysis_evidence=[],
+                citations=[],
+            )
+        data_note = (
+            "canli snapshot su an kullanilabilir aday dondurmedi"
+            if upside_scan.snapshot_available
+            else "canli snapshot su an kullanilabilir degil"
+        )
+        return AskResponse(
+            question=question,
+            route_type="analysis_query",
+            answer=(
+                "Gun ici alinabilir aday uretmedim; "
+                f"{data_note}. "
+                f"Taranan evren {upside_scan.universe_size}, pozitif snapshot adedi {upside_scan.positive_count}. "
+                "Bu durumda chart-only market scan ile 'al' demek yerine nakit/izleme karari daha dogru. "
+                "Pre-open tavan/izleme adaylari ayri endpointte degerlendirilir; gun ici alinabilirlik icin canli fiyat teyidi gerekir."
+            ),
+            used_sources=["intraday_upside_scanner"],
+            confidence=0.35 if not upside_scan.snapshot_available else 0.45,
+            reasoning_summary="Bugun/gun ici soru icin executable intraday scanner calisti; snapshot veya buyable aday olmadigi icin chart-only al sinyaline dusulmedi.",
             recommendation=None,
             analysis_evidence=[],
             citations=[],
@@ -451,7 +538,7 @@ def _build_generic_market_pick_response(question: str) -> AskResponse:
     alternates = ", ".join(f"{item.ticker}" for item in scan.items[1:4])
     answer = (
         f"Su an mevcut market taramasina gore en guclu aday {top.ticker} ({top.company_name}) gorunuyor. "
-        f"Stance {top.stance}, aksiyon {top.action}, weighted score {top.weighted_score}, confidence {top.confidence}. "
+        f"Yon {humanize_label(top.stance)}, aksiyon {humanize_label(top.action)}, agirlikli skor {top.weighted_score}, guven {top.confidence}. "
         f"Kisa gerekce: {top.summary}"
     )
     reasoning_summary = "Ticker belirtilmeden gelen genel alım sorusu, soru bugun/anlik baglami tasiyorsa gun ici momentum destekli scan ile yanitlandi."

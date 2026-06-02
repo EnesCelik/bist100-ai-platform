@@ -3,7 +3,14 @@ from __future__ import annotations
 from datetime import datetime
 
 from app.models.schemas import OpeningCandidateItem, TradingAgentRegimeResponse, TradingAgentSignalScoreItem
+from app.services.chart_feature_service import get_chart_feature_summary
 from app.services.replay_evaluation_service import get_trade_calibration_cached
+from app.services.technical_indicator_text_service import (
+    describe_fibonacci_position,
+    describe_ichimoku_state,
+    describe_macd_state,
+    describe_trend_channel_state,
+)
 
 
 def _clamp(value: float, minimum: float = 0.0, maximum: float = 100.0) -> float:
@@ -117,6 +124,51 @@ def _calibration_component(ticker: str) -> tuple[float, list[str], list[str]]:
     return score, reasons, risks
 
 
+def _technical_indicator_details(ticker: str) -> tuple[dict[str, str | float | int], list[str], list[str]]:
+    chart = get_chart_feature_summary(ticker, timeframe="1G")
+    if chart is None:
+        return {}, [], ["Grafik indikatorleri okunamadi; teknik karar eski opening score ile sinirli."]
+
+    details: dict[str, str | float | int] = {
+        "method": "MACD(12,26,9), Ichimoku(9,26,52 non-lookahead), 60-bar regression channel, 80-bar Fibonacci swing",
+        "signal_bias": chart.signal_bias,
+        "signal_score": chart.signal_score,
+        "macd_state": chart.macd_state,
+        "macd_score": chart.macd_score,
+        "ichimoku_state": chart.ichimoku_state,
+        "ichimoku_score": chart.ichimoku_score,
+        "trend_channel_state": chart.trend_channel_state,
+        "trend_channel_score": chart.trend_channel_score,
+        "trend_channel_position_percent": chart.trend_channel_position_percent,
+        "fibonacci_position": chart.fibonacci_position,
+        "fibonacci_score": chart.fibonacci_score,
+    }
+
+    reasons: list[str] = []
+    risks: list[str] = []
+    if chart.macd_score > 0:
+        reasons.append(describe_macd_state(chart.macd_state, chart.macd_score))
+    elif chart.macd_score < 0:
+        risks.append(describe_macd_state(chart.macd_state, chart.macd_score))
+
+    if chart.ichimoku_score > 0:
+        reasons.append(describe_ichimoku_state(chart.ichimoku_state, chart.ichimoku_score))
+    elif chart.ichimoku_score < 0:
+        risks.append(describe_ichimoku_state(chart.ichimoku_state, chart.ichimoku_score))
+
+    if chart.trend_channel_score > 0:
+        reasons.append(describe_trend_channel_state(chart.trend_channel_state, chart.trend_channel_score))
+    elif chart.trend_channel_score < 0:
+        risks.append(describe_trend_channel_state(chart.trend_channel_state, chart.trend_channel_score))
+
+    if chart.fibonacci_score > 0:
+        reasons.append(describe_fibonacci_position(chart.fibonacci_position, chart.fibonacci_score))
+    elif chart.fibonacci_score < 0:
+        risks.append(describe_fibonacci_position(chart.fibonacci_position, chart.fibonacci_score))
+
+    return details, reasons, risks
+
+
 def detect_regime_from_opening_candidates(items: list[OpeningCandidateItem]) -> TradingAgentRegimeResponse:
     inspected = items[:20]
     changes = [float(item.change_percent) for item in inspected if item.change_percent is not None]
@@ -161,6 +213,7 @@ def score_opening_candidate(
     technical = (_bias_score(item.technical_bias) * 0.55) + (_bias_score(item.intraday_bias_1h) * 0.25) + (_bias_score(item.intraday_bias_4h) * 0.20)
     order_flow = _order_flow_score(item)
     calibration, calibration_reasons, calibration_risks = _calibration_component(item.ticker)
+    technical_details, technical_reasons, technical_risks = _technical_indicator_details(item.ticker)
     risk_penalty, risk_label, risk_notes = _risk_penalty(item)
     regime_bonus = 3.0 if regime and regime.regime == "risk_on" else -6.0 if regime and regime.regime == "risk_off" else 0.0
     adjustments = learning_adjustments or {}
@@ -195,10 +248,12 @@ def score_opening_candidate(
 
     reasons = [
         *item.reasons[:3],
+        *technical_reasons,
         *calibration_reasons,
     ]
     risks = [
         *item.risks[:3],
+        *technical_risks,
         *risk_notes,
         *calibration_risks,
     ]
@@ -220,6 +275,7 @@ def score_opening_candidate(
             "learning": round(learning_score_adjustment, 2),
             "risk_penalty": round(-risk_penalty, 2),
         },
+        technical_breakdown=technical_details,
         reasons=list(dict.fromkeys(reasons))[:5],
         risks=list(dict.fromkeys(risks))[:5],
     )

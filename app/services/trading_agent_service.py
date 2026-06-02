@@ -27,6 +27,7 @@ from app.services.trading_agent_signal_service import (
     detect_regime_from_opening_candidates,
     score_opening_candidate,
 )
+from app.services.technical_indicator_text_service import build_indicator_summary, humanize_label
 
 
 def _default_strategy_name(prefix: str) -> str:
@@ -49,6 +50,40 @@ def _remaining_capital(trade) -> float:
     return round(float(getattr(trade, "remaining_capital", trade.capital_allocated)), 2)
 
 
+def _initial_strategy_capital(open_trades, closed_trades) -> float:
+    """Estimate the starting basket capital without double-counting rotations."""
+    trades = sorted(
+        [*open_trades.items, *closed_trades.items],
+        key=lambda item: item.opened_at or "",
+    )
+    if not trades:
+        return 0.0
+
+    first_opened_at = trades[0].opened_at
+    if not first_opened_at:
+        return round(sum(float(item.capital_allocated) for item in trades), 2)
+
+    try:
+        first_dt = datetime.fromisoformat(first_opened_at)
+    except ValueError:
+        return round(sum(float(item.capital_allocated) for item in trades), 2)
+
+    initial_cutoff_seconds = 300
+    initial_trades = []
+    for item in trades:
+        if not item.opened_at:
+            continue
+        try:
+            opened_dt = datetime.fromisoformat(item.opened_at)
+        except ValueError:
+            continue
+        if abs((opened_dt - first_dt).total_seconds()) <= initial_cutoff_seconds:
+            initial_trades.append(item)
+
+    basket = initial_trades or trades
+    return round(sum(float(item.capital_allocated) for item in basket), 2)
+
+
 def _distance_to_stop_percent(trade) -> float | None:
     if trade.current_price <= 0 or trade.stop_price <= 0:
         return None
@@ -65,7 +100,7 @@ def _build_position_decision(trade) -> TradingAgentPositionDecision:
     if trade.stop_hit:
         action = "exit"
         priority = 100
-        rationale = "Stop seviyesi tetiklenmis; simülasyonda pozisyon kapatma adayi."
+        rationale = "Stop seviyesi tetiklenmis; simulasyonda pozisyon kapatma adayi."
     elif realized_percent >= 50.0 and current_return <= -3.0:
         action = "exit"
         priority = 96
@@ -202,7 +237,7 @@ def simulate_reduce_or_exit(strategy_name: str | None = None, reduce_percent: fl
                 entry_price=None,
                 capital_allocated=item.capital_allocated,
                 rationale=(
-                    f"{item.rationale} Simülasyonda %{reduce_percent} realize edildi."
+                    f"{item.rationale} Simulasyonda %{reduce_percent} realize edildi."
                     if item.ticker in tickers
                     else item.rationale
                 ),
@@ -263,6 +298,12 @@ def run_opening_plan(request: TradingAgentOpeningPlanRequest) -> TradingAgentCyc
     positions: list[ManualBasketPositionRequest] = []
     selected_tickers = {item.ticker for item in selected}
 
+    def _indicator_line(signal) -> str:
+        details = signal.technical_breakdown or {}
+        if not details:
+            return "Teknik detay: indikator ayrintisi okunamadi."
+        return f"Teknik detay: {build_indicator_summary(details)}"
+
     for item in selected:
         entry_price = float(item.last_price)
         signal = scored_by_ticker[item.ticker]
@@ -288,11 +329,13 @@ def run_opening_plan(request: TradingAgentOpeningPlanRequest) -> TradingAgentCyc
                 entry_price=entry_price,
                 capital_allocated=round(allocation, 2),
                 rationale=(
-                    f"Agent score {signal.agent_score} ({signal.signal_label}) ile esigi gecti. "
-                    f"Regime={regime.regime}. "
-                    f"Learning={learning_weights.trade_date}. "
-                    f"Sebep: {'; '.join(signal.reasons[:2]) if signal.reasons else 'sinyal agirliklari yeterli'}."
+                    f"Agent skoru {signal.agent_score} ({humanize_label(signal.signal_label)}) ile esigi gecti. "
+                    f"Piyasa modu {humanize_label(regime.regime)}. "
+                    f"Ogrenme tarihi {learning_weights.trade_date}. "
+                    f"Sebep: {'; '.join(signal.reasons[:2]) if signal.reasons else 'sinyal agirliklari yeterli'}. "
+                    f"{_indicator_line(signal)}"
                 ),
+                technical_breakdown=signal.technical_breakdown,
             )
         )
 
@@ -310,10 +353,12 @@ def run_opening_plan(request: TradingAgentOpeningPlanRequest) -> TradingAgentCyc
                 entry_price=float(item.last_price) if item.last_price is not None else None,
                 capital_allocated=None,
                 rationale=(
-                    f"Agent score {signal.agent_score}; secilmedi. "
-                    f"Risk={signal.risk_label}. "
-                    f"Not: {'; '.join(signal.risks[:2]) if signal.risks else 'rank/limit/sermaye siniri'}."
+                    f"Agent skoru {signal.agent_score}; secilmedi. "
+                    f"Risk seviyesi {humanize_label(signal.risk_label)}. "
+                    f"Not: {'; '.join(signal.risks[:2]) if signal.risks else 'rank/limit/sermaye siniri'}. "
+                    f"{_indicator_line(signal)}"
                 ),
+                technical_breakdown=signal.technical_breakdown,
             )
         )
 
@@ -414,17 +459,14 @@ def get_trading_agent_status(strategy_name: str | None = None) -> TradingAgentSt
     if active_strategy_name:
         latest_report = get_daily_paper_trade_report(strategy_name=active_strategy_name)
 
-    total_capital = round(sum(item.capital_allocated for item in open_trades.items), 2)
-    closed_capital = round(sum(item.capital_allocated for item in closed_trades.items), 2)
-    deployed_capital = round(total_capital + closed_capital, 2)
+    deployed_capital = _initial_strategy_capital(open_trades, closed_trades)
     total_remaining_capital = round(sum(_remaining_capital(item) for item in open_trades.items), 2)
     open_realized_pnl = round(sum(_realized_pnl(item) for item in open_trades.items), 2)
     closed_realized_pnl = round(sum(item.total_position_pnl for item in closed_trades.items), 2)
     total_realized_pnl = round(open_realized_pnl + closed_realized_pnl, 2)
     total_open_unrealized_pnl = round(sum(_unrealized_pnl(item) for item in open_trades.items), 2)
     total_position_pnl = round(total_realized_pnl + total_open_unrealized_pnl, 2)
-    released_capital = round(sum(item.capital_allocated - item.remaining_capital for item in open_trades.items), 2)
-    available_cash = round(closed_capital + released_capital + total_realized_pnl, 2)
+    available_cash = round(deployed_capital - total_remaining_capital + total_realized_pnl, 2)
     portfolio_equity = round(total_remaining_capital + available_cash + total_open_unrealized_pnl, 2)
     avg_return = None
     if open_trades.items:
@@ -434,14 +476,14 @@ def get_trading_agent_status(strategy_name: str | None = None) -> TradingAgentSt
     next_check_minutes = 5 if risk_level == "high" else 10 if risk_level == "medium" else 15
 
     summary = (
-        f"Open trades={open_trades.total}, active_strategy={active_strategy_name or 'none'}, "
-        f"deployed_capital={deployed_capital}, remaining_capital={total_remaining_capital}, "
-        f"available_cash={available_cash}, realized_pnl={total_realized_pnl}, "
-        f"open_unrealized_pnl={total_open_unrealized_pnl}, total_pnl={total_position_pnl}, "
-        f"portfolio_equity={portfolio_equity}, risk={risk_level}"
+        f"Acik islem sayisi {open_trades.total}, aktif strateji {humanize_label(active_strategy_name) or 'yok'}, "
+        f"piyasadaki sermaye {deployed_capital}, kalan pozisyon sermayesi {total_remaining_capital}, "
+        f"kullanilabilir nakit {available_cash}, realize kar/zarar {total_realized_pnl}, "
+        f"acik pozisyon kar/zarari {total_open_unrealized_pnl}, toplam kar/zarar {total_position_pnl}, "
+        f"portfoy degeri {portfolio_equity}, risk seviyesi {humanize_label(risk_level)}"
     )
     if avg_return is not None:
-        summary += f", avg_open_return={avg_return}%"
+        summary += f", acik pozisyon ortalama getirisi %{avg_return}"
 
     return TradingAgentStatusResponse(
         generated_at=datetime.utcnow().isoformat(),

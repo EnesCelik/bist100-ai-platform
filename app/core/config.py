@@ -73,6 +73,9 @@ class Settings(BaseSettings):
     scheduler_agent_morning_telegram_hour: int = 9
     scheduler_agent_morning_telegram_minute: int = 0
     agent_morning_telegram_limit: int = 5
+    scheduler_agent_intraday_telegram_enabled: bool = True
+    scheduler_agent_intraday_telegram_times: str = "09:55,10:05,10:15"
+    agent_intraday_telegram_limit: int = 7
     momentum_universe_tickers: str = "EUPWR,EFOR"
     bist_market_holidays: str = ""
     telegram_bot_token: str = ""

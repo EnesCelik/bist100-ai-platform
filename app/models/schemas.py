@@ -38,6 +38,11 @@ class RuntimeHealthResponse(BaseModel):
     last_agent_morning_telegram_completed_at: str | None = Field(default=None, description="Morning Telegram job last completion time")
     last_agent_morning_telegram_status: str | None = Field(default=None, description="Morning Telegram job last status")
     last_agent_morning_telegram_message: str | None = Field(default=None, description="Morning Telegram job last summary message")
+    agent_intraday_telegram_enabled: bool = Field(default=False, description="Whether intraday Telegram scheduler is enabled")
+    last_agent_intraday_telegram_started_at: str | None = Field(default=None, description="Intraday Telegram job last start time")
+    last_agent_intraday_telegram_completed_at: str | None = Field(default=None, description="Intraday Telegram job last completion time")
+    last_agent_intraday_telegram_status: str | None = Field(default=None, description="Intraday Telegram job last status")
+    last_agent_intraday_telegram_message: str | None = Field(default=None, description="Intraday Telegram job last summary message")
 
 
 class DatabaseHealthResponse(BaseModel):
@@ -306,6 +311,29 @@ class ChartFeatureResponse(BaseModel):
     ema200: float = Field(description="EMA200 value", examples=[301.2])
     ema_alignment: str = Field(description="EMA stack state", examples=["bullish_stack"])
     rsi14: float = Field(description="RSI(14) value", examples=[61.5])
+    macd_line: float = Field(description="MACD line value", examples=[1.24])
+    macd_signal: float = Field(description="MACD signal line value", examples=[0.88])
+    macd_histogram: float = Field(description="MACD histogram value", examples=[0.36])
+    macd_state: str = Field(description="MACD momentum state", examples=["bullish_expanding"])
+    macd_score: int = Field(description="MACD contribution to technical score", examples=[2])
+    ichimoku_tenkan: float = Field(description="Ichimoku Tenkan-sen value", examples=[321.4])
+    ichimoku_kijun: float = Field(description="Ichimoku Kijun-sen value", examples=[318.2])
+    ichimoku_cloud_top: float = Field(description="Current Ichimoku cloud top", examples=[320.1])
+    ichimoku_cloud_bottom: float = Field(description="Current Ichimoku cloud bottom", examples=[315.7])
+    ichimoku_state: str = Field(description="Price position and trend state versus Ichimoku cloud", examples=["above_cloud_bullish"])
+    ichimoku_score: int = Field(description="Ichimoku contribution to technical score", examples=[2])
+    trend_channel_upper: float = Field(description="Regression trend channel upper band", examples=[330.2])
+    trend_channel_mid: float = Field(description="Regression trend channel middle line", examples=[322.8])
+    trend_channel_lower: float = Field(description="Regression trend channel lower band", examples=[315.4])
+    trend_channel_slope_percent: float = Field(description="Approximate channel slope as percent over the fitted window", examples=[3.2])
+    trend_channel_position_percent: float = Field(description="Price position inside trend channel", examples=[62.5])
+    trend_channel_state: str = Field(description="Trend channel interpretation", examples=["rising_mid_channel"])
+    trend_channel_score: int = Field(description="Trend channel contribution to technical score", examples=[1])
+    fibonacci_swing_high: float = Field(description="Recent swing high used for Fibonacci levels", examples=[335.0])
+    fibonacci_swing_low: float = Field(description="Recent swing low used for Fibonacci levels", examples=[302.5])
+    fibonacci_nearest_level: float = Field(description="Nearest Fibonacci retracement/reference level", examples=[322.6])
+    fibonacci_position: str = Field(description="Price position relative to Fibonacci levels", examples=["above_618"])
+    fibonacci_score: int = Field(description="Fibonacci contribution to technical score", examples=[1])
     current_volume: int = Field(description="Current traded volume", examples=[8450000])
     avg_volume: int = Field(description="Reference average volume", examples=[9400000])
     volume_ratio: float = Field(description="Current volume divided by average volume", examples=[1.12])
@@ -513,6 +541,68 @@ class LiveMomentumRadarResponse(BaseModel):
     total: int = Field(description="Number of returned radar items")
     scenario_counts: dict[str, int] = Field(description="Returned scenario distribution")
     items: list[LiveMomentumRadarItem] = Field(description="Ranked live momentum radar items")
+
+
+class PreOpenLimitUpCandidateItem(BaseModel):
+    ticker: str = Field(description="BIST ticker code", examples=["EUPWR"])
+    company_name: str = Field(description="Company name")
+    sector: str = Field(description="Sector name")
+    universe_sources: list[str] = Field(description="Universes/config sources that included the ticker")
+    limit_up_probability_score: float = Field(description="0-100 pre-open limit-up/watch score")
+    probability_bucket: str = Field(description="Qualitative probability bucket", examples=["high"])
+    execution_action: str = Field(description="Actionability label", examples=["watch_preopen"])
+    execution_reason: str = Field(description="Why this actionability label was assigned")
+    previous_close: float = Field(description="Previous daily close")
+    previous_change_percent: float = Field(description="Previous daily open-close change percentage")
+    close_position_percent: float = Field(description="Previous close position within the daily candle range")
+    volume_ratio: float | None = Field(default=None, description="Previous volume divided by recent average volume")
+    five_day_momentum_percent: float | None = Field(default=None, description="Approximate five-bar momentum")
+    trigger_price: float | None = Field(default=None, description="Level that would confirm the setup after open")
+    invalidation_price: float | None = Field(default=None, description="Level that weakens the setup")
+    order_flow_available: bool = Field(description="Whether pre-open theoretical/order-flow data was available")
+    required_confirmation: list[str] = Field(description="Confirmations needed before converting watch to buyable")
+    reasons: list[str] = Field(description="Positive reasons for the ranking")
+    risks: list[str] = Field(description="Risk notes")
+
+
+class PreOpenLimitUpScannerResponse(BaseModel):
+    generated_at: str = Field(description="Scan generation timestamp")
+    universe_size: int = Field(description="Number of unique tickers scanned")
+    total: int = Field(description="Number of returned candidates")
+    order_flow_available: bool = Field(description="Whether pre-open theoretical/order-flow data was available")
+    action_counts: dict[str, int] = Field(description="Returned action distribution")
+    items: list[PreOpenLimitUpCandidateItem] = Field(description="Ranked pre-open limit-up candidates")
+
+
+class IntradayUpsideCandidateItem(BaseModel):
+    ticker: str = Field(description="BIST ticker code", examples=["ASTOR"])
+    company_name: str = Field(description="Company name")
+    sector: str = Field(description="Sector name")
+    universe_sources: list[str] = Field(description="Universes/config sources that included the ticker")
+    upside_score: float = Field(description="0-100 intraday upside score")
+    probability_bucket: str = Field(description="Qualitative probability bucket", examples=["medium"])
+    execution_action: str = Field(description="Actionability label", examples=["buyable_momentum"])
+    execution_reason: str = Field(description="Why this actionability label was assigned")
+    scenario: str = Field(description="Live momentum scenario")
+    last_price: float = Field(description="Latest traded price")
+    change_percent: float = Field(description="Daily change percentage")
+    distance_to_limit_percent: float = Field(description="Approximate remaining distance to +10% limit")
+    volume: int = Field(description="Latest traded volume")
+    expected_volume_ratio: float | None = Field(default=None, description="Time-adjusted volume ratio")
+    spread_percent: float | None = Field(default=None, description="Best ask/bid spread percentage")
+    is_limit_up_like: bool = Field(description="Whether the snapshot looks limit-up/locked")
+    reasons: list[str] = Field(description="Positive reasons for the ranking")
+    risks: list[str] = Field(description="Risk notes")
+
+
+class IntradayUpsideScannerResponse(BaseModel):
+    generated_at: str = Field(description="Scan generation timestamp")
+    universe_size: int = Field(description="Number of unique tickers scanned")
+    positive_count: int = Field(description="Number of scanned tickers currently positive")
+    total: int = Field(description="Number of returned candidates")
+    snapshot_available: bool = Field(description="Whether live snapshot data produced usable candidates")
+    action_counts: dict[str, int] = Field(description="Returned action distribution")
+    items: list[IntradayUpsideCandidateItem] = Field(description="Ranked intraday upside candidates")
 
 
 class PreMarketWatchlistItem(BaseModel):
@@ -1133,6 +1223,9 @@ class PaperTradeItem(BaseModel):
     open_unrealized_pnl: float = Field(default=0.0, description="Unrealized PnL on remaining position")
     total_position_pnl: float = Field(default=0.0, description="Realized plus open unrealized PnL")
     protected_stop_price: float | None = Field(default=None, description="Raised stop after profit protection")
+    execution_status: str = Field(default="filled", description="Simulated execution status")
+    execution_reason: str | None = Field(default=None, description="Why the simulated execution has this status")
+    planned_capital: float | None = Field(default=None, description="Capital originally planned before execution simulation")
     why_now: list[str] = Field(description="Original opportunity reasons")
     risks: list[str] = Field(description="Original opportunity risks")
     opened_at: str | None = Field(default=None, description="Open timestamp")
@@ -1223,6 +1316,7 @@ class TradingAgentCandidateDecision(BaseModel):
     entry_price: float | None = Field(default=None, description="Simulated entry price")
     capital_allocated: float | None = Field(default=None, description="Simulated capital allocation")
     rationale: str = Field(description="Short decision rationale")
+    technical_breakdown: dict[str, str | float | int] = Field(default_factory=dict, description="Separate chart indicator readings behind the decision")
 
 
 class TradingAgentSignalScoreItem(BaseModel):
@@ -1234,6 +1328,7 @@ class TradingAgentSignalScoreItem(BaseModel):
     suggested_action: str = Field(description="Suggested agent action", examples=["open"])
     suggested_capital: float | None = Field(default=None, description="Suggested capital allocation")
     breakdown: dict[str, float] = Field(default_factory=dict, description="Score component breakdown")
+    technical_breakdown: dict[str, str | float | int] = Field(default_factory=dict, description="Separate chart indicator readings used by the agent")
     reasons: list[str] = Field(default_factory=list, description="Agent score positive reasons")
     risks: list[str] = Field(default_factory=list, description="Agent score risks")
 
@@ -1340,7 +1435,7 @@ class TradingAgentStatusResponse(BaseModel):
     total_open_unrealized_pnl: float = Field(default=0.0, description="Total open unrealized PnL")
     total_position_pnl: float = Field(default=0.0, description="Total realized plus open unrealized PnL")
     total_unrealized_pnl: float = Field(default=0.0, description="Backward-compatible alias for total_open_unrealized_pnl")
-    deployed_capital: float = Field(default=0.0, description="Original deployed strategy capital")
+    deployed_capital: float = Field(default=0.0, description="Estimated starting strategy capital, excluding later rotations")
     total_remaining_capital: float = Field(default=0.0, description="Capital still exposed to open positions")
     available_cash: float = Field(default=0.0, description="Simulated cash released by closed/reduced positions")
     portfolio_equity: float = Field(default=0.0, description="Remaining capital plus available cash plus total PnL")

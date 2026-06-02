@@ -46,12 +46,27 @@ def build_signal_summary_from_chart_feature(feature_summary) -> SignalResponse |
     elif feature_summary.rsi14 <= 45:
         negative_factors.append("Momentum zayif; RSI tepki gucunun sinirli kalabilecegini soyluyor")
 
+    if feature_summary.macd_score > 0:
+        positive_factors.append("MACD momentum katmani pozitif teyit uretiyor")
+    elif feature_summary.macd_score < 0:
+        negative_factors.append("MACD momentum katmani negatif uyari uretiyor")
+
+    if feature_summary.ichimoku_score > 0:
+        positive_factors.append("Ichimoku bulutu trend kalitesini destekliyor")
+    elif feature_summary.ichimoku_score < 0:
+        negative_factors.append("Ichimoku bulutu trend kalitesinde zayiflama gosteriyor")
+
+    if feature_summary.trend_channel_score > 0:
+        positive_factors.append("Trend kanali fiyat hareketini destekleyen bolgede")
+    elif feature_summary.trend_channel_score < 0:
+        negative_factors.append("Trend kanali fiyat hareketinde riskli bolgeye isaret ediyor")
+
     return SignalResponse(
         ticker=feature_summary.ticker,
         direction=feature_summary.signal_bias,
         strength=feature_summary.signal_strength,
-        positive_factors=positive_factors[:3],
-        negative_factors=negative_factors[:3],
+        positive_factors=positive_factors[:4],
+        negative_factors=negative_factors[:4],
         source=SIGNAL_SOURCE,
     )
 

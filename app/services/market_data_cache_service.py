@@ -201,7 +201,9 @@ def _is_latest_bar_stale(timeframe: str, latest_timestamp: datetime | None) -> b
     max_age_by_timeframe = {
         "1H": timedelta(days=2),
         "4H": timedelta(days=3),
-        "1G": timedelta(days=5),
+        # Daily bars drive pre-market decisions; accepting multi-day stale bars
+        # can repeat old watchlists with yesterday-looking labels.
+        "1G": timedelta(hours=36),
         "1W": timedelta(days=21),
     }
     max_age = max_age_by_timeframe.get(timeframe.upper())

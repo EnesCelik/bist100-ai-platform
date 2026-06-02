@@ -1,4 +1,5 @@
 from app.models.schemas import AnalysisEvidence, RecommendationPolicyResult
+from app.services.technical_indicator_text_service import humanize_label
 
 
 def derive_recommendation(evidence_items: list[AnalysisEvidence]) -> RecommendationPolicyResult:
@@ -42,9 +43,9 @@ def derive_recommendation(evidence_items: list[AnalysisEvidence]) -> Recommendat
     action = action_map[stance]
 
     summary = (
-        f"Positive evidence: {positive_score}, negative evidence: {negative_score}, "
-        f"net score: {net_score}. Weighted net score: {weighted_net_score}. "
-        f"Policy sonucu {stance} ve action olarak {action} uretildi."
+        f"Pozitif kanit {positive_score}, negatif kanit {negative_score}, "
+        f"net skor {net_score}. Agirlikli net skor {weighted_net_score}. "
+        f"Politika sonucu {humanize_label(stance)} yon ve {humanize_label(action)} aksiyonu uretildi."
     )
 
     return RecommendationPolicyResult(

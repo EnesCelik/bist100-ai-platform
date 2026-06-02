@@ -10,4 +10,5 @@ __pycache__/
 *.sqlite3
 *.db
 *.log
+data/runtime_scheduler_state.json
 bist100_ai_platform.egg-info/
