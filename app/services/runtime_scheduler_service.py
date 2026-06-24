@@ -30,6 +30,10 @@ class SchedulerRuntimeState:
     last_paper_log_completed_at: str | None = None
     last_paper_log_status: str | None = None
     last_paper_log_message: str | None = None
+    last_global_news_watch_started_at: str | None = None
+    last_global_news_watch_completed_at: str | None = None
+    last_global_news_watch_status: str | None = None
+    last_global_news_watch_message: str | None = None
     last_paper_trade_started_at: str | None = None
     last_paper_trade_completed_at: str | None = None
     last_paper_trade_status: str | None = None
@@ -120,6 +124,7 @@ def get_runtime_health() -> RuntimeHealthResponse:
         cleanup_enabled=settings.scheduler_enabled,
         prefetch_enabled=settings.scheduler_enabled and settings.scheduler_prefetch_enabled,
         paper_log_enabled=settings.scheduler_enabled and settings.scheduler_paper_log_enabled,
+        global_news_watch_enabled=settings.scheduler_enabled and settings.global_news_watch_enabled,
         last_cleanup_started_at=_runtime_state.last_cleanup_started_at,
         last_cleanup_completed_at=_runtime_state.last_cleanup_completed_at,
         last_cleanup_status=_runtime_state.last_cleanup_status,
@@ -132,6 +137,10 @@ def get_runtime_health() -> RuntimeHealthResponse:
         last_paper_log_completed_at=_runtime_state.last_paper_log_completed_at,
         last_paper_log_status=_runtime_state.last_paper_log_status,
         last_paper_log_message=_runtime_state.last_paper_log_message,
+        last_global_news_watch_started_at=_runtime_state.last_global_news_watch_started_at,
+        last_global_news_watch_completed_at=_runtime_state.last_global_news_watch_completed_at,
+        last_global_news_watch_status=_runtime_state.last_global_news_watch_status,
+        last_global_news_watch_message=_runtime_state.last_global_news_watch_message,
         paper_trade_enabled=settings.scheduler_enabled and settings.paper_trade_enabled and settings.scheduler_paper_trade_enabled,
         last_paper_trade_started_at=_runtime_state.last_paper_trade_started_at,
         last_paper_trade_completed_at=_runtime_state.last_paper_trade_completed_at,
@@ -218,6 +227,27 @@ def _run_paper_log_once() -> None:
         _runtime_state.last_paper_log_completed_at = _utc_now_iso()
         _runtime_state.last_paper_log_status = "error"
         _runtime_state.last_paper_log_message = str(exc)
+
+
+def _run_global_news_watch_once() -> None:
+    from app.services.global_news_watch_service import run_global_news_watch
+
+    _runtime_state.last_global_news_watch_started_at = _utc_now_iso()
+    _runtime_state.last_global_news_watch_status = "running"
+    try:
+        result = run_global_news_watch(
+            limit=max(settings.global_news_watch_limit, 1),
+            ingest=True,
+        )
+        _runtime_state.last_global_news_watch_completed_at = _utc_now_iso()
+        _runtime_state.last_global_news_watch_status = "ok"
+        _runtime_state.last_global_news_watch_message = (
+            f"fetched={result.fetched_count}, candidates={result.candidate_count}, ingested={result.ingested_count}"
+        )
+    except Exception as exc:  # noqa: BLE001
+        _runtime_state.last_global_news_watch_completed_at = _utc_now_iso()
+        _runtime_state.last_global_news_watch_status = "error"
+        _runtime_state.last_global_news_watch_message = str(exc)
 
 
 def _run_paper_trade_once() -> None:
@@ -368,12 +398,14 @@ async def _scheduler_loop() -> None:
     prefetch_interval = max(settings.scheduler_prefetch_interval_minutes, 1)
     paper_log_interval = max(settings.scheduler_paper_log_interval_minutes, 1)
     paper_trade_interval = max(settings.scheduler_paper_trade_interval_minutes, 1)
+    global_news_watch_interval = max(settings.global_news_watch_interval_minutes, 1)
     prefetch_initial_delay = max(settings.scheduler_prefetch_initial_delay_minutes, 0)
     paper_log_initial_delay = max(settings.scheduler_paper_log_initial_delay_minutes, 0)
     next_cleanup_at = datetime.utcnow()
     next_prefetch_at = datetime.utcnow() + timedelta(minutes=prefetch_initial_delay)
     next_paper_log_at = datetime.utcnow() + timedelta(minutes=paper_log_initial_delay)
     next_paper_trade_at = datetime.utcnow()
+    next_global_news_watch_at = datetime.utcnow()
     next_trading_agent_monitor_at = datetime.utcnow()
 
     while _stop_event is not None and not _stop_event.is_set():
@@ -436,6 +468,10 @@ async def _scheduler_loop() -> None:
             if prefetch_ready:
                 await asyncio.to_thread(_run_paper_log_once)
                 next_paper_log_at = datetime.utcnow() + timedelta(minutes=paper_log_interval)
+
+        if settings.global_news_watch_enabled and now >= next_global_news_watch_at:
+            await asyncio.to_thread(_run_global_news_watch_once)
+            next_global_news_watch_at = datetime.utcnow() + timedelta(minutes=global_news_watch_interval)
 
         if settings.paper_trade_enabled and settings.scheduler_paper_trade_enabled and now >= next_paper_trade_at:
             await asyncio.to_thread(_run_paper_trade_once)

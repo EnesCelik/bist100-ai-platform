@@ -33,6 +33,10 @@ def _source_is_matriks(source: str | None) -> bool:
     return bool(source and source.lower().startswith("matriks"))
 
 
+def _provider_is_matriks_family(provider: str | None) -> bool:
+    return bool(provider and provider.lower().startswith("matriks"))
+
+
 def fetch_market_data(ticker: str, force_refresh: bool = True) -> MarketDataResponse:
     market_snapshot = get_market_snapshot(ticker, force_refresh=force_refresh)
     if market_snapshot is None:
@@ -78,8 +82,8 @@ def fetch_market_data_provider_health(ticker: str = "GARAN", timeframe: str = "1
     snapshot_is_matriks = _source_is_matriks(snapshot_source)
     ohlcv_is_matriks = _source_is_matriks(ohlcv_source)
 
-    if settings.production_data_strict and provider != "matriks":
-        notes.append("production_data_strict is enabled but active provider is not matriks")
+    if settings.production_data_strict and not _provider_is_matriks_family(provider):
+        notes.append("production_data_strict is enabled but active provider is not a Matriks-family provider")
     if snapshot is None:
         notes.append("snapshot probe returned no data")
     elif settings.production_data_strict and not snapshot_is_matriks:
@@ -96,9 +100,9 @@ def fetch_market_data_provider_health(ticker: str = "GARAN", timeframe: str = "1
         notes.append("Matriks token is loaded but local expiry check marks it unusable")
 
     status = "ok"
-    if provider == "matriks" and settings.production_data_strict and (snapshot is None or not snapshot_is_matriks):
+    if _provider_is_matriks_family(provider) and settings.production_data_strict and (snapshot is None or not snapshot_is_matriks):
         status = "degraded"
-    if provider == "matriks" and ohlcv is None:
+    if _provider_is_matriks_family(provider) and ohlcv is None:
         status = "degraded"
 
     return MarketDataProviderHealthResponse(

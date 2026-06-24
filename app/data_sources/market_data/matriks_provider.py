@@ -567,6 +567,17 @@ def _to_int(value: Any, default: int = 0) -> int:
 
 
 
+def _pick_first_positive_float(payload: dict[str, Any], *keys: str, default: float = 0.0) -> float:
+    for key in keys:
+        if key not in payload:
+            continue
+        value = _to_float(payload.get(key), default=default)
+        if value > 0:
+            return value
+    return default
+
+
+
 def _compute_change_percent(payload: dict[str, Any], last_price: float) -> float:
     explicit_change = _pick_first(payload, "change_percent", "daily_change_percent")
     if explicit_change not in (None, ""):
@@ -586,11 +597,27 @@ def _map_quote_payload(ticker: str, payload: dict[str, Any]) -> MarketDataRespon
 
     last_price = _to_float(_pick_first(payload, "last_price", "last", "price", "close"), default=0.0)
     if last_price <= 0:
+        # During BIST pre-open Matriks can return last/bid/ask as 0 while
+        # publishing the indicative auction price in eqPrice. If eqPrice is
+        # missing or zero, continue falling back to basePrice/dayClose.
+        last_price = _pick_first_positive_float(
+            payload,
+            "eqPrice",
+            "equilibriumPrice",
+            "basePrice",
+            "dayClose",
+            default=0.0,
+        )
+    if last_price <= 0:
         return None
 
     bid = _to_float(_pick_first(payload, "best_bid", "bid", "bid_price"), default=last_price)
     ask = _to_float(_pick_first(payload, "best_ask", "ask", "ask_price"), default=last_price)
-    volume = _to_int(_pick_first(payload, "quantity", "volume", "lot", "total_volume"), default=0)
+    if bid <= 0:
+        bid = last_price
+    if ask <= 0:
+        ask = last_price
+    volume = _to_int(_pick_first(payload, "quantity", "volume", "lot", "total_volume", "eqQuantity"), default=0)
 
     return MarketDataResponse(
         ticker=ticker.upper(),

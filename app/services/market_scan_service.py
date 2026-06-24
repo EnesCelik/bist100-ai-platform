@@ -670,6 +670,72 @@ def _opening_calibration_component(trade_calibration) -> tuple[float, list[str],
     return 0.0, reasons, risks
 
 
+def _macro_event_component(ticker: str) -> tuple[float, list[str], list[str]]:
+    macro_event = get_macro_event_summary(ticker)
+    if macro_event is None:
+        return 0.0, [], []
+
+    positive_count = len(macro_event.positive_impacts)
+    negative_count = len(macro_event.negative_impacts)
+    net_impact = positive_count - negative_count
+    if net_impact == 0:
+        return 0.0, [], []
+
+    score = _clamp(net_impact * 2.5, -10.0, 10.0)
+    title = macro_event.latest_macro_event
+    if net_impact > 0:
+        reasons = [f"Makro haber destegi: {title}"]
+        reasons.extend(macro_event.positive_impacts[:2])
+        return score, reasons, []
+
+    risks = [f"Makro haber riski: {title}"]
+    risks.extend(macro_event.negative_impacts[:2])
+    return score, [], risks
+
+
+def _pre_market_news_component(ticker: str) -> tuple[float, list[str], list[str]]:
+    news_impact = fetch_optional_news_impact(ticker, limit=4, days=4)
+    if news_impact is None or news_impact.total_articles <= 0:
+        return 0.0, [], []
+
+    avg_sentiment = news_impact.average_sentiment
+    latest_source = news_impact.items[0].source if news_impact.items else None
+    latest_headline = news_impact.items[0].headline if news_impact.items else None
+    reasons: list[str] = []
+    risks: list[str] = []
+    score = 0.0
+
+    if avg_sentiment is not None:
+        if avg_sentiment >= 0.18:
+            score += 8.0
+            reasons.append("Son gunlerde pozitif haber akisi var")
+        elif avg_sentiment >= 0.05:
+            score += 4.0
+            reasons.append("Son gunlerde hafif pozitif haber akisi var")
+        elif avg_sentiment <= -0.18:
+            score -= 8.0
+            risks.append("Son gunlerde negatif haber akisi var")
+        elif avg_sentiment <= -0.05:
+            score -= 4.0
+            risks.append("Son gunlerde hafif negatif haber akisi var")
+
+    if news_impact.total_articles >= 3 and avg_sentiment is not None and avg_sentiment > 0:
+        score += 2.0
+        reasons.append("Pozitif haber akisi birden fazla kaynakta tekrar ediyor")
+    elif news_impact.total_articles >= 3 and avg_sentiment is not None and avg_sentiment < 0:
+        score -= 2.0
+        risks.append("Negatif haber akisi birden fazla kaynakta tekrar ediyor")
+
+    if latest_source and latest_headline:
+        short_headline = latest_headline[:90]
+        if score > 0:
+            reasons.append(f"En guncel haber: {latest_source} - {short_headline}")
+        elif score < 0:
+            risks.append(f"En guncel haber: {latest_source} - {short_headline}")
+
+    return _clamp(score, -10.0, 10.0), reasons[:3], risks[:3]
+
+
 def _pick_opening_trigger(daily_chart, intraday_1h, intraday_4h) -> float | None:
     for chart in (intraday_1h, intraday_4h, daily_chart):
         if chart is not None and chart.breakout_buy_trigger > 0:
@@ -849,6 +915,7 @@ def _build_opening_candidate(company) -> tuple[OpeningCandidateItem | None, bool
     liquidity_score, spread, order_proxy, liquidity_reasons, liquidity_risks = _liquidity_component(market_snapshot)
     book_score, book_pressure, book_imbalance, book_reasons, book_risks = _order_book_pressure_component(company.ticker)
     calibration_score, calibration_reasons, calibration_risks = _opening_calibration_component(trade_calibration)
+    macro_score, macro_reasons, macro_risks = _macro_event_component(company.ticker)
     closing_strength = _closing_strength_proxy(daily_chart, intraday_1h, intraday_4h)
 
     strength_score = ((closing_strength or 45.0) - 45.0) * 0.28
@@ -860,6 +927,7 @@ def _build_opening_candidate(company) -> tuple[OpeningCandidateItem | None, bool
         + (liquidity_score * 0.65)
         + book_score
         + calibration_score
+        + macro_score
         + strength_score,
         0.0,
         100.0,
@@ -871,8 +939,8 @@ def _build_opening_candidate(company) -> tuple[OpeningCandidateItem | None, bool
     if score < 44:
         return None, False
 
-    reasons = list(dict.fromkeys(change_reasons + volume_reasons + technical_reasons + liquidity_reasons + book_reasons + calibration_reasons))[:6]
-    risks = list(dict.fromkeys(change_risks + volume_risks + technical_risks + liquidity_risks + book_risks + calibration_risks))[:6]
+    reasons = list(dict.fromkeys(change_reasons + volume_reasons + technical_reasons + liquidity_reasons + book_reasons + calibration_reasons + macro_reasons))[:7]
+    risks = list(dict.fromkeys(change_risks + volume_risks + technical_risks + liquidity_risks + book_risks + calibration_risks + macro_risks))[:7]
 
     return OpeningCandidateItem(
         ticker=company.ticker,
@@ -1633,6 +1701,48 @@ def _pre_market_reference_candles(candles, expected_date: date):
     return [candle for _bar_date, candle in eligible], last
 
 
+def _pre_market_live_snapshot_component(market_snapshot, previous_close: float) -> tuple[float, list[str], list[str]]:
+    reasons: list[str] = []
+    risks: list[str] = []
+    if market_snapshot is None or previous_close <= 0:
+        return 0.0, reasons, risks
+    if "matriks" not in market_snapshot.source.lower():
+        return 0.0, reasons, risks
+
+    score = 0.0
+    implied_change = round(((market_snapshot.last_price - previous_close) / previous_close) * 100.0, 2)
+    if implied_change >= 2.0:
+        score += 10.0
+        reasons.append("Pre-open referans fiyat onceki kapanisin belirgin uzerinde")
+    elif implied_change >= 0.6:
+        score += 6.0
+        reasons.append("Pre-open referans fiyat onceki kapanisin uzerinde")
+    elif implied_change <= -2.0:
+        score -= 10.0
+        risks.append("Pre-open referans fiyat onceki kapanisin belirgin altinda")
+    elif implied_change <= -0.6:
+        score -= 6.0
+        risks.append("Pre-open referans fiyat onceki kapanisin altinda")
+    else:
+        reasons.append("Pre-open referans fiyat onceki kapanisa yakin")
+
+    if market_snapshot.volume > 0:
+        score += 4.0
+        reasons.append("Canli snapshot hacim teyidi veriyor")
+
+    spread_ratio = 0.0
+    if market_snapshot.last_price > 0 and market_snapshot.best_ask >= market_snapshot.best_bid > 0:
+        spread_ratio = (market_snapshot.best_ask - market_snapshot.best_bid) / market_snapshot.last_price
+    if spread_ratio > 0.012:
+        score -= 3.0
+        risks.append("Pre-open spread genis")
+    elif 0 < spread_ratio <= 0.004:
+        score += 2.0
+        reasons.append("Pre-open spread dar")
+
+    return score, reasons, risks
+
+
 def _score_pre_market_watchlist_item(company: CompanyResponse, universe_sources: list[str]) -> PreMarketWatchlistItem | None:
     ohlcv = get_market_ohlcv(company.ticker, timeframe="1G", bars=30)
     if ohlcv is None or not ohlcv.candles:
@@ -1660,6 +1770,7 @@ def _score_pre_market_watchlist_item(company: CompanyResponse, universe_sources:
         get_chart_feature_summary(company.ticker, timeframe="1G"),
         last.close,
     )
+    market_snapshot = get_market_snapshot(company.ticker, force_refresh=True)
 
     score = 24.0
     reasons: list[str] = []
@@ -1729,6 +1840,24 @@ def _score_pre_market_watchlist_item(company: CompanyResponse, universe_sources:
     else:
         risks.append("Gunluk teknik veri eksik veya uyumsuz")
 
+    live_snapshot_score, live_snapshot_reasons, live_snapshot_risks = _pre_market_live_snapshot_component(
+        market_snapshot,
+        previous_close=last.close,
+    )
+    score += live_snapshot_score
+    reasons.extend(live_snapshot_reasons)
+    risks.extend(live_snapshot_risks)
+
+    news_score, news_reasons, news_risks = _pre_market_news_component(company.ticker)
+    score += news_score
+    reasons.extend(news_reasons)
+    risks.extend(news_risks)
+
+    macro_score, macro_reasons, macro_risks = _macro_event_component(company.ticker)
+    score += macro_score
+    reasons.extend(macro_reasons)
+    risks.extend(macro_risks)
+
     final_score = round(_clamp(score, 0.0, 100.0), 2)
     if final_score < 42.0:
         return None
@@ -1776,7 +1905,15 @@ def scan_pre_market_watchlist(limit: int = 15, universe_code: str = "bist100") -
         ),
         reverse=True,
     )
-    limited_items = ranked[: max(limit, 1)]
+    strict_floor = 42.0
+    target_count = min(max(limit, 1), 5)
+    strict_items = [item for item in ranked if item.pre_market_score >= strict_floor]
+    if len(strict_items) >= target_count:
+        limited_items = strict_items[: max(limit, 1)]
+    else:
+        adaptive_floor = 36.0
+        adaptive_items = [item for item in ranked if item.pre_market_score >= adaptive_floor]
+        limited_items = adaptive_items[: max(limit, 1)]
     setup_counts: dict[str, int] = {}
     for item in limited_items:
         setup_counts[item.setup_type] = setup_counts.get(item.setup_type, 0) + 1

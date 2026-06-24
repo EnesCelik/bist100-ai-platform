@@ -4,12 +4,15 @@ from app.models.schemas import MarketDataResponse, OHLCVResponse, OrderBookPress
 from app.data_sources.market_data.matriks_provider import get_order_book_pressure as get_matriks_order_book_pressure
 from app.data_sources.market_data.matriks_provider import get_market_ohlcv as get_matriks_market_ohlcv
 from app.data_sources.market_data.matriks_provider import get_market_snapshot as get_matriks_market_snapshot
+from app.data_sources.market_data.matriks_dde_bridge_provider import get_order_book_pressure as get_matriks_dde_bridge_order_book_pressure
+from app.data_sources.market_data.matriks_dde_bridge_provider import get_market_ohlcv as get_matriks_dde_bridge_market_ohlcv
+from app.data_sources.market_data.matriks_dde_bridge_provider import get_market_snapshot as get_matriks_dde_bridge_market_snapshot
 from app.data_sources.market_data.mock_provider import get_order_book_pressure as get_mock_order_book_pressure
 from app.data_sources.market_data.mock_provider import get_market_snapshot as get_mock_market_snapshot
 from app.data_sources.market_data.yahoo_provider import get_market_ohlcv as get_yahoo_market_ohlcv
 from app.data_sources.market_data.yahoo_provider import get_market_snapshot as get_yahoo_market_snapshot
 
-SUPPORTED_MARKET_DATA_PROVIDERS = {"mock", "matriks", "yahoo_delayed"}
+SUPPORTED_MARKET_DATA_PROVIDERS = {"mock", "matriks", "matriks_dde_bridge", "yahoo_delayed"}
 
 
 def _normalize_provider_name() -> str:
@@ -20,7 +23,7 @@ def _normalize_provider_name() -> str:
 
 
 def _strict_matriks_mode(provider: str) -> bool:
-    return settings.production_data_strict and provider == "matriks"
+    return settings.production_data_strict and provider.startswith("matriks")
 
 
 def get_market_snapshot(ticker: str, force_refresh: bool = False) -> MarketDataResponse | None:
@@ -30,6 +33,13 @@ def get_market_snapshot(ticker: str, force_refresh: bool = False) -> MarketDataR
         matriks_snapshot = get_matriks_market_snapshot(ticker, force_refresh=force_refresh)
         if matriks_snapshot is not None:
             return matriks_snapshot
+        if _strict_matriks_mode(provider):
+            return None
+
+    if provider == "matriks_dde_bridge":
+        dde_snapshot = get_matriks_dde_bridge_market_snapshot(ticker, force_refresh=force_refresh)
+        if dde_snapshot is not None:
+            return dde_snapshot
         if _strict_matriks_mode(provider):
             return None
 
@@ -52,6 +62,13 @@ def get_market_ohlcv(ticker: str, timeframe: str = "1G", bars: int = 60) -> OHLC
         if _strict_matriks_mode(provider):
             return None
 
+    if provider == "matriks_dde_bridge":
+        dde_payload = get_matriks_dde_bridge_market_ohlcv(ticker, timeframe=timeframe, bars=bars)
+        if dde_payload is not None:
+            return dde_payload
+        if _strict_matriks_mode(provider):
+            return None
+
     yahoo_payload = get_yahoo_market_ohlcv(ticker, timeframe=timeframe, bars=bars)
     if yahoo_payload is not None:
         return yahoo_payload
@@ -64,6 +81,8 @@ def get_order_book_pressure(ticker: str, levels: int = 10) -> OrderBookPressureR
 
     if provider == "matriks":
         return get_matriks_order_book_pressure(ticker, levels=levels)
+    if provider == "matriks_dde_bridge":
+        return get_matriks_dde_bridge_order_book_pressure(ticker, levels=levels)
     if settings.production_data_strict:
         return get_matriks_order_book_pressure(ticker, levels=levels)
 

@@ -29,6 +29,22 @@ class Settings(BaseSettings):
     kap_sectors_url: str = "https://www.kap.org.tr/en/Sektorler"
     kap_timeout_seconds: float = 10.0
     news_impact_provider: str = "marketaux"
+    global_news_watch_enabled: bool = False
+    global_news_watch_interval_minutes: int = 30
+    global_news_watch_limit: int = 20
+    global_news_watch_ingest_min_confidence: float = 0.70
+    global_news_watch_sources: str = "gdelt,turkey_finance_rss,x_turkey_finance_watch,kap_disclosures"
+    global_news_watch_keywords: str = "iran,abd,hormuz,petrol,savas,ateskes,yaptirim,kap,bist,merkez bankasi,enflasyon,faiz"
+    x_finance_watch_enabled: bool = False
+    x_bearer_token: str = ""
+    x_finance_watch_accounts: str = ""
+    x_finance_watch_keywords: str = "BIST,KAP,borsa,hisse,tavan,ihale,sozlesme,bedelsiz,temettu"
+    kap_watch_enabled: bool = True
+    kap_watch_keywords: str = "ihale,sozlesme,yatirim,bedelsiz,temettu,geri alim,sermaye artirimi,finansal rapor"
+    kap_watch_member_types: str = "IGS,DDK"
+    kap_watch_disclosure_types: str = "ODA,FR,DUY,DG,CA"
+    kap_backend_base_url: str = "https://kapsitebackend.mkk.com.tr"
+    kap_disclosure_list_path: str = "/api/disclosure/list/main"
     marketaux_api_token: str = ""
     marketaux_base_url: str = "https://api.marketaux.com/v1"
     marketaux_language: str = "en"
@@ -117,6 +133,15 @@ class Settings(BaseSettings):
     matriks_bar_period_1w: str = ""
     matriks_timeout_seconds: float = 5.0
     matriks_verify_ssl: bool = True
+
+    # Matriks terminal DDE bridge ayarlari.
+    matriks_dde_bridge_base_url: str = "http://127.0.0.1:8765"
+    matriks_dde_bridge_health_path: str = "/health"
+    matriks_dde_bridge_symbol_path_template: str = "/symbol/{ticker}"
+    matriks_dde_bridge_watchlist_path: str = "/watchlist"
+    matriks_dde_bridge_ohlcv_path_template: str = ""
+    matriks_dde_bridge_timeout_seconds: float = 3.0
+    matriks_dde_bridge_verify_ssl: bool = False
 
     # Legacy alanlari geriye donuk uyumluluk icin koruyoruz.
     matriks_username: str = ""

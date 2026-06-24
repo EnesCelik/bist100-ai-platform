@@ -214,6 +214,20 @@ def get_market_data_debug(ticker: str, timeframe: str = "1G") -> MarketDataDebug
     ensure_runtime_schema()
     normalized_ticker = ticker.upper()
     normalized_timeframe = timeframe.upper()
+
+    # Keep debug aligned with current runtime behavior: if the active provider is
+    # Matriks-family and the cached snapshot is stale, warm it before reading the cache.
+    try:
+        from app.data_sources.market_data.provider import get_active_market_data_provider, get_market_snapshot
+
+        provider = get_active_market_data_provider()
+        if provider.startswith("matriks"):
+            stale_snapshot = get_cached_market_snapshot(normalized_ticker, max_age_minutes=settings.market_snapshot_max_age_minutes)
+            if stale_snapshot is None:
+                get_market_snapshot(normalized_ticker, force_refresh=True)
+    except Exception:
+        pass
+
     with SessionLocal() as session:
         snapshot_row = session.get(MarketSnapshotCurrent, normalized_ticker)
         statement = (

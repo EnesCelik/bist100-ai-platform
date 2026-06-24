@@ -474,9 +474,13 @@ def derive_impacts(
         positive.extend(sector_rules.get("positive", []))
         negative.extend(sector_rules.get("negative", []))
 
-        region_rules = REGION_RULES.get(normalized_region, {}).get(sector, {})
-        positive.extend(region_rules.get("positive", []))
-        negative.extend(region_rules.get("negative", []))
+        # De-escalation events should not inherit generic regional tension risks.
+        # Example: a US-Iran peace/Hormuz reopening headline is Middle East related,
+        # but its market effect is risk-premium relief rather than fresh conflict pressure.
+        if "deescalation" not in normalized_category and "de_escalation" not in normalized_category:
+            region_rules = REGION_RULES.get(normalized_region, {}).get(sector, {})
+            positive.extend(region_rules.get("positive", []))
+            negative.extend(region_rules.get("negative", []))
 
     ticker_rules = TICKER_OVERRIDES.get(normalized_ticker, {}).get(normalized_category, {})
     positive.extend(ticker_rules.get("positive", []))

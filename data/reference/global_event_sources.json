@@ -38,5 +38,37 @@
     "access_mode": "manual",
     "coverage": "Dis API olmadan editor uzerinden global olay girisi",
     "notes": "Bugun kullanabilecegimiz en hizli fallback. Global event -> sektor -> ticker akisini test etmek icin yeterli."
+  },
+  {
+    "source_id": "kap_disclosures",
+    "name": "KAP Disclosures",
+    "category": "turkey_company_disclosures",
+    "access_mode": "official_feed_or_scrape",
+    "coverage": "KAP ozel durum aciklamalari, finansal raporlar, ihale, sozlesme, sermaye artirimi ve yonetim kararlarini izler",
+    "notes": "BIST icin en guvenilir sirket haber katmani. X sinyalleri bu kaynakla dogrulanmadan yuksek guvenli sayilmamali."
+  },
+  {
+    "source_id": "x_turkey_finance_watch",
+    "name": "X Turkey Finance Watch",
+    "category": "social_early_signal",
+    "access_mode": "api_or_manual_export",
+    "coverage": "X uzerindeki BIST, KAP, ekonomi, borsa gundemi ve hisse bazli erken sosyal sinyalleri takip eder",
+    "notes": "Erken sinyal icin degerli ama manipülasyon/soylenti riski yuksek. Skora tek basina buyuk etki vermemeli; KAP, haber ajansi veya fiyat-hacim teyidi aranmali."
+  },
+  {
+    "source_id": "turkey_finance_rss",
+    "name": "Turkey Finance RSS Basket",
+    "category": "turkey_finance_news",
+    "access_mode": "rss",
+    "coverage": "Turkiye ekonomi, piyasa, banka, enerji, havacilik ve BIST haber basliklarini RSS kaynaklarindan toplar",
+    "notes": "Dogrulanabilir haber akisi icin dusuk maliyetli ilk otomasyon katmani."
+  },
+  {
+    "source_id": "global_energy_geopolitics_watch",
+    "name": "Global Energy and Geopolitics Watch",
+    "category": "global_macro_news",
+    "access_mode": "api_rss_or_gdelt",
+    "coverage": "Petrol, Hurmuz, savas/ateskes, yaptirim, merkez bankasi ve global risk istahi haberlerini izler",
+    "notes": "BIST sektor rotasyonu icin makro rejim sinyali uretir; bankalar, havacilik, enerji, savunma ve holdingler onceliklidir."
   }
 ]

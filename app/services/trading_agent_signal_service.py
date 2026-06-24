@@ -4,6 +4,7 @@ from datetime import datetime
 
 from app.models.schemas import OpeningCandidateItem, TradingAgentRegimeResponse, TradingAgentSignalScoreItem
 from app.services.chart_feature_service import get_chart_feature_summary
+from app.services.macro_event_service import get_macro_event_summary
 from app.services.replay_evaluation_service import get_trade_calibration_cached
 from app.services.technical_indicator_text_service import (
     describe_fibonacci_position,
@@ -169,6 +170,27 @@ def _technical_indicator_details(ticker: str) -> tuple[dict[str, str | float | i
     return details, reasons, risks
 
 
+def _macro_event_score(ticker: str) -> tuple[float, list[str], list[str]]:
+    macro_event = get_macro_event_summary(ticker)
+    if macro_event is None:
+        return 0.0, [], []
+
+    net_impact = len(macro_event.positive_impacts) - len(macro_event.negative_impacts)
+    if net_impact == 0:
+        return 0.0, [], []
+
+    score = _clamp(net_impact * 2.2, -8.0, 8.0)
+    title = macro_event.latest_macro_event
+    if net_impact > 0:
+        reasons = [f"Makro haber destegi: {title}"]
+        reasons.extend(macro_event.positive_impacts[:2])
+        return score, reasons, []
+
+    risks = [f"Makro haber riski: {title}"]
+    risks.extend(macro_event.negative_impacts[:2])
+    return score, [], risks
+
+
 def detect_regime_from_opening_candidates(items: list[OpeningCandidateItem]) -> TradingAgentRegimeResponse:
     inspected = items[:20]
     changes = [float(item.change_percent) for item in inspected if item.change_percent is not None]
@@ -214,6 +236,7 @@ def score_opening_candidate(
     order_flow = _order_flow_score(item)
     calibration, calibration_reasons, calibration_risks = _calibration_component(item.ticker)
     technical_details, technical_reasons, technical_risks = _technical_indicator_details(item.ticker)
+    macro_score, macro_reasons, macro_risks = _macro_event_score(item.ticker)
     risk_penalty, risk_label, risk_notes = _risk_penalty(item)
     regime_bonus = 3.0 if regime and regime.regime == "risk_on" else -6.0 if regime and regime.regime == "risk_off" else 0.0
     adjustments = learning_adjustments or {}
@@ -227,6 +250,7 @@ def score_opening_candidate(
         + (order_flow * 0.10)
         + 8.0
         + calibration
+        + macro_score
         + regime_bonus
         + learning_score_adjustment
         - risk_penalty
@@ -249,11 +273,13 @@ def score_opening_candidate(
     reasons = [
         *item.reasons[:3],
         *technical_reasons,
+        *macro_reasons,
         *calibration_reasons,
     ]
     risks = [
         *item.risks[:3],
         *technical_risks,
+        *macro_risks,
         *risk_notes,
         *calibration_risks,
     ]
@@ -271,6 +297,7 @@ def score_opening_candidate(
             "technical": round(technical * 0.17, 2),
             "order_flow": round(order_flow * 0.10, 2),
             "calibration": round(calibration, 2),
+            "macro": round(macro_score, 2),
             "regime": round(regime_bonus, 2),
             "learning": round(learning_score_adjustment, 2),
             "risk_penalty": round(-risk_penalty, 2),

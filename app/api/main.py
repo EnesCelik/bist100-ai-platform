@@ -8,6 +8,7 @@ from app.api.routes.chart_features import router as chart_features_router
 from app.api.routes.companies import router as companies_router
 from app.api.routes.db import router as db_router
 from app.api.routes.health import router as health_router
+from app.api.routes.global_news_watch import router as global_news_watch_router
 from app.api.routes.ingest import router as ingest_router
 from app.api.routes.macro_events import router as macro_events_router
 from app.api.routes.news import router as news_router
@@ -42,6 +43,7 @@ def create_app() -> FastAPI:
 
     # Tum route'lari burada merkezi olarak uygulamaya baglayacagiz.
     app.include_router(health_router, prefix=settings.api_v1_prefix)
+    app.include_router(global_news_watch_router, prefix=settings.api_v1_prefix)
     app.include_router(analysis_runs_router, prefix=settings.api_v1_prefix)
     app.include_router(ask_router, prefix=settings.api_v1_prefix)
     app.include_router(chart_features_router, prefix=settings.api_v1_prefix)

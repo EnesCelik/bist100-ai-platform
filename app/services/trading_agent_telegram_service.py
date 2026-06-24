@@ -18,7 +18,7 @@ def _build_morning_telegram_message(limit: int) -> tuple[str, list[str]]:
         f"BIST agent pre-market izleme listesi - {today}",
         f"Pre-market aday sayisi: {scan.total}/{scan.universe_size}",
         "",
-        "Not: Bu liste onceki gun kapanis/hacim/grafik verisiyle uretilir; gercek emir gondermez.",
+        "Not: Bu liste onceki gun kapanis/hacim/grafik verisiyle ve mevcut pre-open Matriks snapshot ile uretilir; gercek emir gondermez.",
         "",
     ]
     tickers: list[str] = []
@@ -28,12 +28,20 @@ def _build_morning_telegram_message(limit: int) -> tuple[str, list[str]]:
 
     for index, item in enumerate(scan.items, 1):
         tickers.append(item.ticker)
+        top_reason = item.reasons[0] if item.reasons else "Ek sinyal yok"
+        top_risk = item.risks[0] if item.risks else "Belirgin ek risk yok"
+        trigger_text = f"{item.trigger_price}" if item.trigger_price is not None else "-"
+        invalidation_text = f"{item.invalidation_price}" if item.invalidation_price is not None else "-"
+        technical_text = humanize_label(item.technical_bias) if item.technical_bias else "-"
+        lines.append(f"{index}. {item.ticker} | skor {round(item.pre_market_score, 2)} | kurgu {humanize_label(item.setup_type)}")
         lines.append(
-            f"{index}. {item.ticker} | skor {round(item.pre_market_score, 2)} | "
-            f"onceki kapanis {item.previous_close} | onceki degisim %{item.previous_change_percent} | "
-            f"kapanis gucu {item.close_position_percent} | hacim {item.volume_ratio}x | "
-            f"kurgu {humanize_label(item.setup_type)}"
+            f"   kapanis {item.previous_close} | degisim %{item.previous_change_percent} | kapanis gucu {item.close_position_percent} | hacim {item.volume_ratio}x"
         )
+        lines.append(
+            f"   tetik {trigger_text} | zayiflama {invalidation_text} | teknik {technical_text}"
+        )
+        lines.append(f"   neden: {top_reason}")
+        lines.append(f"   risk: {top_risk}")
     return "\n".join(lines), tickers
 
 
