@@ -33,5 +33,1615 @@
     "document_type": "kap",
     "published_at": "2026-04-16",
     "file_path": "garan_kap_aciklamasi_dijital_bankacilik_yatirimi.md"
+  },
+  {
+    "ticker": "DITAS",
+    "document_title": "Kurumsal Yönetim Bilgi Formu (Güncelleme) - Yönetim Kurulu-2",
+    "document_type": "kap",
+    "published_at": "2026-09-01",
+    "file_path": "ditas_kurumsal_yonetim_bilgi_formu_guncelleme_yonetim_kurulu_2.md"
+  },
+  {
+    "ticker": "ENDAE",
+    "document_title": "Ortaklık Aleyhine Dava Açılması veya Davaya İlişkin Gelişmeler",
+    "document_type": "kap",
+    "published_at": "2026-09-01",
+    "file_path": "endae_ortaklik_aleyhine_dava_acilmasi_veya_davaya_iliskin_gelismeler.md"
+  },
+  {
+    "ticker": "LIDER",
+    "document_title": "Payların Geri Alınmasına İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-01",
+    "file_path": "lider_paylarin_geri_alinmasina_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "ARASE",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-01",
+    "file_path": "arase_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "IYF",
+    "document_title": "Yatırım Kuruluşu Varant - Sertifika - Senetlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-01",
+    "file_path": "iyf_yatirim_kurulusu_varant_sertifika_senetlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "KARTN",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-01",
+    "file_path": "kartn_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "BAGFS",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-01",
+    "file_path": "bagfs_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "SAHOL",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-01",
+    "file_path": "sahol_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "KUVVA",
+    "document_title": "Finansal Tablo ve-veya Dipnot Değişikliği",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "kuvva_finansal_tablo_ve_veya_dipnot_degisikligi.md"
+  },
+  {
+    "ticker": "ATEKS",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "ateks_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "VAKBN",
+    "document_title": "Pay Dışında Sermaye Piyasası Aracı İşlemlerine İlişkin Bildirim (Faiz İçeren)",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "vakbn_pay_disinda_sermaye_piyasasi_araci_islemlerine_iliskin_bildirim_faiz_iceren.md"
+  },
+  {
+    "ticker": "ISFIN",
+    "document_title": "Pay Dışında Sermaye Piyasası Aracı İşlemlerine İlişkin Bildirim (Faiz İçeren)",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "isfin_pay_disinda_sermaye_piyasasi_araci_islemlerine_iliskin_bildirim_faiz_iceren.md"
+  },
+  {
+    "ticker": "IYF",
+    "document_title": "Pay Dışında Sermaye Piyasası Aracı İşlemlerine İlişkin Bildirim (Faiz İçeren)",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "iyf_pay_disinda_sermaye_piyasasi_araci_islemlerine_iliskin_bildirim_faiz_iceren.md"
+  },
+  {
+    "ticker": "IYF",
+    "document_title": "Kredi Derecelendirmesi",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "iyf_kredi_derecelendirmesi.md"
+  },
+  {
+    "ticker": "ULUFA",
+    "document_title": "Pay Dışında Sermaye Piyasası Aracı İşlemlerine İlişkin Bildirim (Faiz İçeren)",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "ulufa_pay_disinda_sermaye_piyasasi_araci_islemlerine_iliskin_bildirim_faiz_iceren.md"
+  },
+  {
+    "ticker": "ATATR",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "atatr_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "DUNYH",
+    "document_title": "Sermaye Artırımı - Azaltımı İşlemlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "dunyh_sermaye_artirimi_azaltimi_islemlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "OTKAR",
+    "document_title": "Pay Dışında Sermaye Piyasası Aracı İşlemlerine İlişkin Bildirim (Faiz İçeren)",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "otkar_pay_disinda_sermaye_piyasasi_araci_islemlerine_iliskin_bildirim_faiz_iceren.md"
+  },
+  {
+    "ticker": "EPLAS",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "eplas_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "BALAT",
+    "document_title": "Payların Geri Alınmasına İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "balat_paylarin_geri_alinmasina_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "DUNYH",
+    "document_title": "Esas Sözleşme",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "dunyh_esas_sozlesme.md"
+  },
+  {
+    "ticker": "MIATK",
+    "document_title": "Birleşme İşlemlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "miatk_birlesme_islemlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "ONRYT",
+    "document_title": "Kurumsal Yönetim İlkelerine Uyum Derecelendirmesi",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "onryt_kurumsal_yonetim_ilkelerine_uyum_derecelendirmesi.md"
+  },
+  {
+    "ticker": "SSAAT",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "ssaat_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "TABGD",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "tabgd_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "ATAKP",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "atakp_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "GUBRF",
+    "document_title": "Kar Payı Dağıtım İşlemlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "gubrf_kar_payi_dagitim_islemlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "ORZAX",
+    "document_title": "Genel Kurul İşlemlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "orzax_genel_kurul_islemlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "ALARK",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-03",
+    "file_path": "alark_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "SDTTR",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "sdttr_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "TEZOL",
+    "document_title": "Payların Geri Alınmasına İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "tezol_paylarin_geri_alinmasina_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "SAMAT",
+    "document_title": "Sermaye Artırımı - Azaltımı İşlemlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "samat_sermaye_artirimi_azaltimi_islemlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "IHLGM",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "ihlgm_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "QUAGR",
+    "document_title": "Kurumsal Yönetim İlkelerine Uyum Derecelendirmesi",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "quagr_kurumsal_yonetim_ilkelerine_uyum_derecelendirmesi.md"
+  },
+  {
+    "ticker": "BTCIM",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "btcim_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "MGROS",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "mgros_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "DERHL",
+    "document_title": "Pay Dışında Sermaye Piyasası Aracı İşlemlerine İlişkin Bildirim (Faiz İçeren)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "derhl_pay_disinda_sermaye_piyasasi_araci_islemlerine_iliskin_bildirim_faiz_iceren.md"
+  },
+  {
+    "ticker": "LIDFA",
+    "document_title": "Pay Dışında Sermaye Piyasası Aracı İşlemlerine İlişkin Bildirim (Faiz İçeren)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "lidfa_pay_disinda_sermaye_piyasasi_araci_islemlerine_iliskin_bildirim_faiz_iceren.md"
+  },
+  {
+    "ticker": "BRLSM",
+    "document_title": "TSRS Uyumlu Sürdürülebilirlik Raporu",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "brlsm_tsrs_uyumlu_surdurulebilirlik_raporu.md"
+  },
+  {
+    "ticker": "SOKM",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "sokm_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "GOODY",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "goody_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "KLYPV",
+    "document_title": "Sermaye Artırımı - Azaltımı İşlemlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "klypv_sermaye_artirimi_azaltimi_islemlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "KFEIN",
+    "document_title": "Kurumsal Yönetim İlkelerine Uyum Derecelendirmesi",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "kfein_kurumsal_yonetim_ilkelerine_uyum_derecelendirmesi.md"
+  },
+  {
+    "ticker": "DOAS",
+    "document_title": "Kurumsal Yönetim İlkelerine Uyum Derecelendirmesi",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "doas_kurumsal_yonetim_ilkelerine_uyum_derecelendirmesi.md"
+  },
+  {
+    "ticker": "TEHOL",
+    "document_title": "Kurumsal Yönetim Bilgi Formu (Güncelleme) - Yönetim Kurulu-2",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "tehol_kurumsal_yonetim_bilgi_formu_guncelleme_yonetim_kurulu_2.md"
+  },
+  {
+    "ticker": "PEKGY",
+    "document_title": "Kurumsal Yönetim Bilgi Formu (Güncelleme) - Yönetim Kurulu-2",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "pekgy_kurumsal_yonetim_bilgi_formu_guncelleme_yonetim_kurulu_2.md"
+  },
+  {
+    "ticker": "BRISA",
+    "document_title": "Pay Dışında Sermaye Piyasası Aracı İşlemlerine İlişkin Bildirim (Faiz İçeren)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "brisa_pay_disinda_sermaye_piyasasi_araci_islemlerine_iliskin_bildirim_faiz_iceren.md"
+  },
+  {
+    "ticker": "GOODY",
+    "document_title": "Kurumsal Yönetim Bilgi Formu (Güncelleme) - Yönetim Kurulu-2",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "goody_kurumsal_yonetim_bilgi_formu_guncelleme_yonetim_kurulu_2.md"
+  },
+  {
+    "ticker": "ZOREN",
+    "document_title": "Pay Dışında Sermaye Piyasası Aracı İşlemlerine İlişkin Bildirim (Faiz İçeren)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "zoren_pay_disinda_sermaye_piyasasi_araci_islemlerine_iliskin_bildirim_faiz_iceren.md"
+  },
+  {
+    "ticker": "NATEN",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "naten_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "ESEN",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "esen_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "MAGEN",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "magen_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "MOPAS",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "mopas_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "FIN",
+    "document_title": "Pay Dışında Sermaye Piyasası Aracı İşlemlerine İlişkin Bildirim (Faiz İçeren)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "fin_pay_disinda_sermaye_piyasasi_araci_islemlerine_iliskin_bildirim_faiz_iceren.md"
+  },
+  {
+    "ticker": "SUWEN",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "suwen_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "EKGYO",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "ekgyo_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "USHOL",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "ushol_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "DOCO",
+    "document_title": "Sermaye Artırımı - Azaltımı İşlemlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "doco_sermaye_artirimi_azaltimi_islemlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "SODSN",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "sodsn_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "SODSN",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "sodsn_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "AVPGY",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "avpgy_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "TGSAS",
+    "document_title": "Katılım Finansı İlkeleri Bilgi Formu ",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "tgsas_katilim_finansi_ilkeleri_bilgi_formu.md"
+  },
+  {
+    "ticker": "GLCVY",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "glcvy_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "ARENA",
+    "document_title": "Katılım Finansı İlkeleri Bilgi Formu ",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "arena_katilim_finansi_ilkeleri_bilgi_formu.md"
+  },
+  {
+    "ticker": "BRLSM",
+    "document_title": "Katılım Finansı İlkeleri Bilgi Formu ",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "brlsm_katilim_finansi_ilkeleri_bilgi_formu.md"
+  },
+  {
+    "ticker": "MCARD",
+    "document_title": "Katılım Finansı İlkeleri Bilgi Formu ",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "mcard_katilim_finansi_ilkeleri_bilgi_formu.md"
+  },
+  {
+    "ticker": "BRMEN",
+    "document_title": "TTK'nın 376. Maddesi Kapsamında Yapılan İşlemler",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "brmen_ttk_nin_376_maddesi_kapsaminda_yapilan_islemler.md"
+  },
+  {
+    "ticker": "BRMEN",
+    "document_title": "Sermaye Artırımından Elde Edilecek - Edilen Fonun Kullanımına İlişkin Rapor",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "brmen_sermaye_artirimindan_elde_edilecek_edilen_fonun_kullanimina_iliskin_rapor.md"
+  },
+  {
+    "ticker": "TEHOL",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "tehol_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "KPEKS",
+    "document_title": "Esas Sözleşme Tadili",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "kpeks_esas_sozlesme_tadili.md"
+  },
+  {
+    "ticker": "ENERY",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "enery_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "AHGAZ",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "ahgaz_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "OZYSR",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "ozysr_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "MARTI",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "marti_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "VAKFN",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "vakfn_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "ENSRI",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "ensri_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "ENSRI",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "ensri_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "BAYRK",
+    "document_title": "Katılım Finansı İlkeleri Bilgi Formu ",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "bayrk_katilim_finansi_ilkeleri_bilgi_formu.md"
+  },
+  {
+    "ticker": "VBTYZ",
+    "document_title": "Katılım Finansı İlkeleri Bilgi Formu ",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "vbtyz_katilim_finansi_ilkeleri_bilgi_formu.md"
+  },
+  {
+    "ticker": "SUWEN",
+    "document_title": "Payların Geri Alınmasına İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "suwen_paylarin_geri_alinmasina_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "INFO",
+    "document_title": "Payların Geri Alınmasına İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "info_paylarin_geri_alinmasina_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "ARSAN",
+    "document_title": "Payların Geri Alınmasına İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "arsan_paylarin_geri_alinmasina_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "KMPUR",
+    "document_title": "Katılım Finansı İlkeleri Bilgi Formu ",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "kmpur_katilim_finansi_ilkeleri_bilgi_formu.md"
+  },
+  {
+    "ticker": "MEGMT",
+    "document_title": "Katılım Finansı İlkeleri Bilgi Formu ",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "megmt_katilim_finansi_ilkeleri_bilgi_formu.md"
+  },
+  {
+    "ticker": "DESA",
+    "document_title": "Katılım Finansı İlkeleri Bilgi Formu ",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "desa_katilim_finansi_ilkeleri_bilgi_formu.md"
+  },
+  {
+    "ticker": "DMRGD",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "dmrgd_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "TERA",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "tera_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "EFOR",
+    "document_title": "Sermaye Artırımından Elde Edilecek - Edilen Fonun Kullanımına İlişkin Rapor",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "efor_sermaye_artirimindan_elde_edilecek_edilen_fonun_kullanimina_iliskin_rapor.md"
+  },
+  {
+    "ticker": "EFOR",
+    "document_title": "Sermaye Artırımı - Azaltımı İşlemlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "efor_sermaye_artirimi_azaltimi_islemlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "EFOR",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "efor_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "MOBTL",
+    "document_title": "Katılım Finansı İlkeleri Bilgi Formu ",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "mobtl_katilim_finansi_ilkeleri_bilgi_formu.md"
+  },
+  {
+    "ticker": "KRVGD",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "krvgd_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "KRVGD",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "krvgd_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "BINBN",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "binbn_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "BINBN",
+    "document_title": "Finansal Duran Varlık Satışı",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "binbn_finansal_duran_varlik_satisi.md"
+  },
+  {
+    "ticker": "DZGYO",
+    "document_title": "Kredi Derecelendirmesi",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "dzgyo_kredi_derecelendirmesi.md"
+  },
+  {
+    "ticker": "ICUGS",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "icugs_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "INTET",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "intet_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "INTET",
+    "document_title": "Katılım Finansı İlkeleri Bilgi Formu ",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "intet_katilim_finansi_ilkeleri_bilgi_formu.md"
+  },
+  {
+    "ticker": "RGYAS",
+    "document_title": "Katılım Finansı İlkeleri Bilgi Formu ",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "rgyas_katilim_finansi_ilkeleri_bilgi_formu.md"
+  },
+  {
+    "ticker": "INTET",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "intet_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "ALTNY",
+    "document_title": "Pay  Satış Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-04",
+    "file_path": "altny_pay_satis_bilgi_formu.md"
+  },
+  {
+    "ticker": "TSK",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-05",
+    "file_path": "tsk_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "GENIL",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-06",
+    "file_path": "genil_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "GENIL",
+    "document_title": "Finansal Duran Varlık Edinimi",
+    "document_type": "kap",
+    "published_at": "2026-09-06",
+    "file_path": "genil_finansal_duran_varlik_edinimi.md"
+  },
+  {
+    "ticker": "CCOLA",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "ccola_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "CCOLA",
+    "document_title": "İhraç Belgesi",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "ccola_ihrac_belgesi.md"
+  },
+  {
+    "ticker": "CCOLA",
+    "document_title": "İhraç Tavanına İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "ccola_ihrac_tavanina_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "RAYSG",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "raysg_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "KCAER",
+    "document_title": "Sürdürülebilirlik Raporu",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "kcaer_surdurulebilirlik_raporu.md"
+  },
+  {
+    "ticker": "YIGIT",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "yigit_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "GSDHO",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "gsdho_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "BULGS",
+    "document_title": "Payların Geri Alınmasına İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "bulgs_paylarin_geri_alinmasina_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "GLCVY",
+    "document_title": "İhraç Tavanına İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "glcvy_ihrac_tavanina_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "GRNYO",
+    "document_title": "Haftalık Rapor",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "grnyo_haftalik_rapor.md"
+  },
+  {
+    "ticker": "TERA",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "tera_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "INFO",
+    "document_title": "Yatırım Kuruluşu Varant - Sertifika - Senetlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "info_yatirim_kurulusu_varant_sertifika_senetlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "GSDDE",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "gsdde_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "GSDHO",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "gsdho_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "MTRYO",
+    "document_title": "Haftalık Rapor",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "mtryo_haftalik_rapor.md"
+  },
+  {
+    "ticker": "LILAK",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "lilak_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "GUBRF",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "gubrf_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "ATLAS",
+    "document_title": "Haftalık Rapor",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "atlas_haftalik_rapor.md"
+  },
+  {
+    "ticker": "RODRG",
+    "document_title": "Genel Kurul İşlemlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "rodrg_genel_kurul_islemlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "RODRG",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "rodrg_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "OYLUM",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "oylum_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "OBAMS",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "obams_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "AKFYE",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "akfye_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "AEFES",
+    "document_title": "Pay Dışında Sermaye Piyasası Aracı İşlemlerine İlişkin Bildirim (Faiz İçeren)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "aefes_pay_disinda_sermaye_piyasasi_araci_islemlerine_iliskin_bildirim_faiz_iceren.md"
+  },
+  {
+    "ticker": "YGGYO",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "yggyo_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "OYAYO",
+    "document_title": "Haftalık Rapor",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "oyayo_haftalik_rapor.md"
+  },
+  {
+    "ticker": "KLN",
+    "document_title": "Esas Sözleşme",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "kln_esas_sozlesme.md"
+  },
+  {
+    "ticker": "KLN",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "kln_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "KLN",
+    "document_title": "Şirket Merkezi Değişikliği",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "kln_sirket_merkezi_degisikligi.md"
+  },
+  {
+    "ticker": "MHRGY",
+    "document_title": "Sermaye Artırımı - Azaltımı İşlemlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "mhrgy_sermaye_artirimi_azaltimi_islemlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "OYLUM",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "oylum_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "MHRGY",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "mhrgy_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "ETYAT",
+    "document_title": "Haftalık Rapor",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "etyat_haftalik_rapor.md"
+  },
+  {
+    "ticker": "ETYAT",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "etyat_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "EUYO",
+    "document_title": "Haftalık Rapor",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "euyo_haftalik_rapor.md"
+  },
+  {
+    "ticker": "EUYO",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "euyo_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "EUKYO",
+    "document_title": "Haftalık Rapor",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "eukyo_haftalik_rapor.md"
+  },
+  {
+    "ticker": "EUKYO",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "eukyo_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "ISYAT",
+    "document_title": "Haftalık Rapor",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "isyat_haftalik_rapor.md"
+  },
+  {
+    "ticker": "VKFYO",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "vkfyo_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "VKFYO",
+    "document_title": "Haftalık Rapor",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "vkfyo_haftalik_rapor.md"
+  },
+  {
+    "ticker": "IYM",
+    "document_title": "Piyasa Yapıcılığı Kapsamında Gerçekleştirilen İşlemler Bildirimi",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "iym_piyasa_yapiciligi_kapsaminda_gerceklestirilen_islemler_bildirimi.md"
+  },
+  {
+    "ticker": "IYM",
+    "document_title": "Yatırım Kuruluşu Varant - Sertifika - Senetlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "iym_yatirim_kurulusu_varant_sertifika_senetlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "ANSGR",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "ansgr_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "ISKUR",
+    "document_title": "Pay Dışında Sermaye Piyasası Aracı İşlemlerine İlişkin Bildirim (Faiz İçeren)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "iskur_pay_disinda_sermaye_piyasasi_araci_islemlerine_iliskin_bildirim_faiz_iceren.md"
+  },
+  {
+    "ticker": "DURKN",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "durkn_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "IDGYO",
+    "document_title": "Genel Kurul İşlemlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "idgyo_genel_kurul_islemlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "ESCAR",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "escar_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "MASFN",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "masfn_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "TVB",
+    "document_title": "Pay Dışında Sermaye Piyasası Aracı İşlemlerine İlişkin Bildirim (Faiz İçeren)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "tvb_pay_disinda_sermaye_piyasasi_araci_islemlerine_iliskin_bildirim_faiz_iceren.md"
+  },
+  {
+    "ticker": "ATSYH",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "atsyh_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "PRZMA",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "przma_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "EKIM",
+    "document_title": "Payların Geri Alınmasına İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "ekim_paylarin_geri_alinmasina_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "BYDNR",
+    "document_title": "Haber ve Söylentilere İlişkin Açıklama",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "bydnr_haber_ve_soylentilere_iliskin_aciklama.md"
+  },
+  {
+    "ticker": "PRZMA",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "przma_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "HEDEF",
+    "document_title": "Sermaye Artırımı - Azaltımı İşlemlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "hedef_sermaye_artirimi_azaltimi_islemlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "NTHOL",
+    "document_title": "Payların Geri Alınmasına İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "nthol_paylarin_geri_alinmasina_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "ANHYT",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "anhyt_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "PETUN",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "petun_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "KLN",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "kln_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "KCAER",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "kcaer_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "BESLR",
+    "document_title": "Sürdürülebilirlik Raporu",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "beslr_surdurulebilirlik_raporu.md"
+  },
+  {
+    "ticker": "LIDER",
+    "document_title": "Pay Dışında Sermaye Piyasası Aracı İşlemlerine İlişkin Bildirim (Faiz İçeren)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "lider_pay_disinda_sermaye_piyasasi_araci_islemlerine_iliskin_bildirim_faiz_iceren.md"
+  },
+  {
+    "ticker": "DAGI",
+    "document_title": "Payların Geri Alınmasına İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "dagi_paylarin_geri_alinmasina_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "OYA",
+    "document_title": "Piyasa Yapıcılığı Kapsamında Gerçekleştirilen İşlemler Bildirimi",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "oya_piyasa_yapiciligi_kapsaminda_gerceklestirilen_islemler_bildirimi.md"
+  },
+  {
+    "ticker": "ENERY",
+    "document_title": "Payların Geri Alınmasına İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "enery_paylarin_geri_alinmasina_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "AHGAZ",
+    "document_title": "Payların Geri Alınmasına İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "ahgaz_paylarin_geri_alinmasina_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "FZLGY",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "fzlgy_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "FZLGY",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "fzlgy_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "DYOBY",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "dyoby_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "MAGEN",
+    "document_title": "Payların Geri Alınmasına İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "magen_paylarin_geri_alinmasina_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "MANAS",
+    "document_title": "Katılım Finansı İlkeleri Bilgi Formu ",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "manas_katilim_finansi_ilkeleri_bilgi_formu.md"
+  },
+  {
+    "ticker": "AGESA",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "agesa_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "KCHOL",
+    "document_title": "Pay Alım Satım Bildirimi",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "kchol_pay_alim_satim_bildirimi.md"
+  },
+  {
+    "ticker": "ONRYT",
+    "document_title": "Sermaye Artırımı - Azaltımı İşlemlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "onryt_sermaye_artirimi_azaltimi_islemlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "LMKDC",
+    "document_title": "Katılım Finansı İlkeleri Bilgi Formu ",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "lmkdc_katilim_finansi_ilkeleri_bilgi_formu.md"
+  },
+  {
+    "ticker": "EFOR",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "efor_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "MMCAS",
+    "document_title": "Hak Kullanım Süreç İptal Bildirimi",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "mmcas_hak_kullanim_surec_iptal_bildirimi.md"
+  },
+  {
+    "ticker": "ORGE",
+    "document_title": "Payların Geri Alınmasına İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "orge_paylarin_geri_alinmasina_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "MMCAS",
+    "document_title": "Sermaye Artırımı - Azaltımı İşlemlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "mmcas_sermaye_artirimi_azaltimi_islemlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "KLGYO",
+    "document_title": "Kurumsal Yönetim Bilgi Formu (Güncelleme) - Yönetim Kurulu-1",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "klgyo_kurumsal_yonetim_bilgi_formu_guncelleme_yonetim_kurulu_1.md"
+  },
+  {
+    "ticker": "ASTOR",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "astor_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "VESTL",
+    "document_title": "Haber ve Söylentilere İlişkin Açıklama",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "vestl_haber_ve_soylentilere_iliskin_aciklama.md"
+  },
+  {
+    "ticker": "SKTAS",
+    "document_title": "Kredi Derecelendirmesi",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "sktas_kredi_derecelendirmesi.md"
+  },
+  {
+    "ticker": "SOKE",
+    "document_title": "Katılım Finansı İlkeleri Bilgi Formu ",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "soke_katilim_finansi_ilkeleri_bilgi_formu.md"
+  },
+  {
+    "ticker": "VESTL",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "vestl_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "VESBE",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "vesbe_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "EBEBK",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "ebebk_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "AKGRT",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "akgrt_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "GZNMI",
+    "document_title": "İhraç Tavanına İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "gznmi_ihrac_tavanina_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "SAMAT",
+    "document_title": "Katılım Finansı İlkeleri Bilgi Formu ",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "samat_katilim_finansi_ilkeleri_bilgi_formu.md"
+  },
+  {
+    "ticker": "KRVGD",
+    "document_title": "Kar Payı Dağıtım İşlemlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "krvgd_kar_payi_dagitim_islemlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "GEREL",
+    "document_title": "Pay Alım Satım Bildirimi",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "gerel_pay_alim_satim_bildirimi.md"
+  },
+  {
+    "ticker": "MARMR",
+    "document_title": "Esas Sözleşme Tadili",
+    "document_type": "kap",
+    "published_at": "2026-09-07",
+    "file_path": "marmr_esas_sozlesme_tadili.md"
+  },
+  {
+    "ticker": "BALSU",
+    "document_title": "Sorumluluk Beyanı (Konsolide)",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "balsu_sorumluluk_beyani_konsolide.md"
+  },
+  {
+    "ticker": "BALSU",
+    "document_title": "Faaliyet Raporu (Konsolide)",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "balsu_faaliyet_raporu_konsolide.md"
+  },
+  {
+    "ticker": "BALSU",
+    "document_title": "Finansal Rapor",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "balsu_finansal_rapor.md"
+  },
+  {
+    "ticker": "BALSU",
+    "document_title": "Payların Geri Alınmasına İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "balsu_paylarin_geri_alinmasina_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "BALSU",
+    "document_title": "Kurumsal Yönetim Uyum Raporu",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "balsu_kurumsal_yonetim_uyum_raporu.md"
+  },
+  {
+    "ticker": "BALSU",
+    "document_title": "Kurumsal Yönetim Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "balsu_kurumsal_yonetim_bilgi_formu.md"
+  },
+  {
+    "ticker": "ULUSE",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "uluse_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "ULUSE",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "uluse_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "KMPUR",
+    "document_title": "Entegre Rapor",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "kmpur_entegre_rapor.md"
+  },
+  {
+    "ticker": "IHLAS",
+    "document_title": "Sermaye Artırımı - Azaltımı İşlemlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "ihlas_sermaye_artirimi_azaltimi_islemlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "GRNYO",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "grnyo_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "CWENE",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "cwene_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "TGB",
+    "document_title": "Yatırım Kuruluşu Varant - Sertifika - Senetlerine İlişkin Bildirim",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "tgb_yatirim_kurulusu_varant_sertifika_senetlerine_iliskin_bildirim.md"
+  },
+  {
+    "ticker": "OYAYO",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "oyayo_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "AKBNK",
+    "document_title": "Pay Dışında Sermaye Piyasası Aracı İşlemlerine İlişkin Bildirim (Faiz İçeren)",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "akbnk_pay_disinda_sermaye_piyasasi_araci_islemlerine_iliskin_bildirim_faiz_iceren.md"
+  },
+  {
+    "ticker": "AKBNK",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "akbnk_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "GLCVY",
+    "document_title": "İhraç Belgesi",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "glcvy_ihrac_belgesi.md"
+  },
+  {
+    "ticker": "HKTM",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "hktm_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "THL",
+    "document_title": "Pay Dışında Sermaye Piyasası Aracı İşlemlerine İlişkin Bildirim (Faiz İçeren)",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "thl_pay_disinda_sermaye_piyasasi_araci_islemlerine_iliskin_bildirim_faiz_iceren.md"
+  },
+  {
+    "ticker": "HUNER",
+    "document_title": "Finansal Duran Varlık Edinimi",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "huner_finansal_duran_varlik_edinimi.md"
+  },
+  {
+    "ticker": "HKTM",
+    "document_title": "Kurumsal Yönetim Bilgi Formu (Güncelleme) - Yönetim Kurulu-2",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "hktm_kurumsal_yonetim_bilgi_formu_guncelleme_yonetim_kurulu_2.md"
+  },
+  {
+    "ticker": "HKTM",
+    "document_title": "Kurumsal Yönetim Bilgi Formu (Güncelleme) - Yönetim Kurulu-1",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "hktm_kurumsal_yonetim_bilgi_formu_guncelleme_yonetim_kurulu_1.md"
+  },
+  {
+    "ticker": "HKTM",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "hktm_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "HUNER",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "huner_sirket_genel_bilgi_formu.md"
+  },
+  {
+    "ticker": "SMRVA",
+    "document_title": "Pay Dışında Sermaye Piyasası Aracı İşlemlerine İlişkin Bildirim (Faiz İçeren)",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "smrva_pay_disinda_sermaye_piyasasi_araci_islemlerine_iliskin_bildirim_faiz_iceren.md"
+  },
+  {
+    "ticker": "ERCB",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "ercb_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "MCARD",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "mcard_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "ATATR",
+    "document_title": "Yatırımcı Raporu",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "atatr_yatirimci_raporu.md"
+  },
+  {
+    "ticker": "DOFRB",
+    "document_title": "Özel Durum Açıklaması (Genel)",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "dofrb_ozel_durum_aciklamasi_genel.md"
+  },
+  {
+    "ticker": "TERA",
+    "document_title": "Toptan Alış Satış İşlemi Bildirimi",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "tera_toptan_alis_satis_islemi_bildirimi.md"
+  },
+  {
+    "ticker": "DIRIT",
+    "document_title": "Şirket Genel Bilgi Formu",
+    "document_type": "kap",
+    "published_at": "2026-09-08",
+    "file_path": "dirit_sirket_genel_bilgi_formu.md"
   }
 ]

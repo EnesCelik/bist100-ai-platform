@@ -1,7 +1,6 @@
 from app.models.schemas import InstitutionalFlowResponse
+from app.realtime_trade_flow.institutional_flow_adapter import get_realtime_institutional_flow
 
 
-# Kurumsal akim icin guvenilir veri kaynagi baglanana kadar
-# yapay fon yorumu uretmiyoruz.
 def get_institutional_flow_summary(ticker: str) -> InstitutionalFlowResponse | None:
-    return None
+    return get_realtime_institutional_flow(ticker)

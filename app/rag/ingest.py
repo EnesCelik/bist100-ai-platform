@@ -6,9 +6,16 @@ from app.models.schemas import IngestDocumentRequest, IngestDocumentResponse
 from app.rag.local_retriever import DOCUMENTS_DIR, INDEX_FILE
 
 
+_TURKISH_ASCII_MAP = str.maketrans({
+    "ı": "i", "İ": "i", "ş": "s", "Ş": "s", "ğ": "g", "Ğ": "g",
+    "ü": "u", "Ü": "u", "ö": "o", "Ö": "o", "ç": "c", "Ç": "c",
+})
+
+
 def _slugify(value: str) -> str:
     # Dosya ismi icin sade, tekrar kullanilabilir bir slug uretiyoruz.
-    lowered_value = value.lower()
+    # Turkce karakterleri ASCII karsiliklarina cevirip kaybolmalarini onluyoruz.
+    lowered_value = value.translate(_TURKISH_ASCII_MAP).lower()
     normalized_value = re.sub(r"[^a-z0-9]+", "_", lowered_value)
     return normalized_value.strip("_")
 

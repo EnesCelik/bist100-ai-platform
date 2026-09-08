@@ -2,6 +2,7 @@ from fastapi import APIRouter, Query
 
 from app.models.schemas import (
     ManualBasketCreateRequest,
+    PaperTradeAllTimeSummaryResponse,
     PaperTradeDailyReportResponse,
     PaperTradeFinalizeResponse,
     PaperTradeHistoryResponse,
@@ -10,12 +11,15 @@ from app.models.schemas import (
 )
 from app.services.paper_trade_simulation_service import (
     create_manual_basket,
+    evaluate_circuit_breaker,
     finalize_open_trades,
+    get_all_time_paper_trade_summary,
     get_daily_paper_trade_report,
     get_paper_trades,
     monitor_open_trades,
     open_top_opportunity_trades,
 )
+from app.services.trading_safety_service import TradingSafetyStatusResponse, get_safety_status, halt_trading, resume_trading
 
 router = APIRouter(tags=["paper-trades"])
 
@@ -59,3 +63,31 @@ def get_daily_report(
     strategy_name: str | None = Query(default=None),
 ) -> PaperTradeDailyReportResponse:
     return get_daily_paper_trade_report(trade_date=trade_date, strategy_name=strategy_name)
+
+
+@router.get("/simulation/report/all-time", response_model=PaperTradeAllTimeSummaryResponse)
+def get_all_time_report(
+    strategy_name: str | None = Query(default=None),
+) -> PaperTradeAllTimeSummaryResponse:
+    return get_all_time_paper_trade_summary(strategy_name=strategy_name)
+
+
+@router.get("/simulation/safety/status", response_model=TradingSafetyStatusResponse)
+def get_trading_safety_status() -> TradingSafetyStatusResponse:
+    return get_safety_status()
+
+
+@router.post("/simulation/safety/halt", response_model=TradingSafetyStatusResponse)
+def halt_trading_route(reason: str = Query(default="Manuel olarak durduruldu.")) -> TradingSafetyStatusResponse:
+    return halt_trading(reason=reason, triggered_by="manual")
+
+
+@router.post("/simulation/safety/resume", response_model=TradingSafetyStatusResponse)
+def resume_trading_route() -> TradingSafetyStatusResponse:
+    return resume_trading()
+
+
+@router.post("/simulation/safety/evaluate-circuit-breaker", response_model=TradingSafetyStatusResponse)
+def evaluate_circuit_breaker_route() -> TradingSafetyStatusResponse:
+    evaluate_circuit_breaker()
+    return get_safety_status()

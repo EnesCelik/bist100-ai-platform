@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import urllib.parse
 import urllib.request
@@ -17,6 +18,8 @@ from app.data_sources.company_data.provider import list_company_records
 from app.models.schemas import IngestGlobalEventRequest, IngestNewsRequest, SectorImpactOverride
 from app.services.global_event_service import ingest_global_event
 from app.services.news_service import ingest_news
+
+logger = logging.getLogger(__name__)
 
 
 class GlobalNewsWatchCandidate(BaseModel):
@@ -187,7 +190,8 @@ def _fetch_json(url: str, timeout: float = 8.0) -> dict[str, Any] | list[Any] | 
         request = urllib.request.Request(url, headers={"User-Agent": "bist100-ai-platform/0.1"})
         with urllib.request.urlopen(request, timeout=timeout) as response:
             return json.loads(response.read().decode("utf-8", errors="replace"))
-    except Exception:
+    except Exception as exc:
+        logger.warning("GET %s failed: %s", url, exc)
         return None
 
 
@@ -208,7 +212,8 @@ def _post_json(url: str, payload: dict[str, Any], timeout: float = 8.0) -> dict[
         )
         with urllib.request.urlopen(request, timeout=timeout) as response:
             return json.loads(response.read().decode("utf-8", errors="replace"))
-    except Exception:
+    except Exception as exc:
+        logger.warning("POST %s failed: %s", url, exc)
         return None
 
 
@@ -217,7 +222,8 @@ def _fetch_text(url: str, timeout: float = 8.0) -> str | None:
         request = urllib.request.Request(url, headers={"User-Agent": "bist100-ai-platform/0.1"})
         with urllib.request.urlopen(request, timeout=timeout) as response:
             return response.read().decode("utf-8", errors="replace")
-    except Exception:
+    except Exception as exc:
+        logger.warning("GET %s failed: %s", url, exc)
         return None
 
 

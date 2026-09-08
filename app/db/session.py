@@ -7,7 +7,13 @@ from app.core.config import settings
 from app.db.base import Base
 
 
-engine = create_engine(settings.database_url, echo=settings.database_echo, future=True)
+engine = create_engine(
+    settings.database_url,
+    echo=settings.database_echo,
+    future=True,
+    pool_pre_ping=True,
+    pool_recycle=1800,
+)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, class_=Session)
 _schema_lock = threading.Lock()
 _schema_initialized = False

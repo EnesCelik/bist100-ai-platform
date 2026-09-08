@@ -168,6 +168,11 @@ def store_market_data_token(token: str) -> str:
     return _set_runtime_token(token)
 
 
+def get_runtime_market_data_token() -> str:
+    """En son basarili login/SSO/browser-bootstrap ile depolanan token'i dondurur."""
+    return _read_runtime_token()
+
+
 def decode_market_data_token_expiry(token: str) -> datetime | None:
     return _decode_jwt_expiry(token.strip())
 
@@ -421,6 +426,7 @@ def _build_login_payload_for_credentials(
     session_key: str = "",
     action: str = "",
     otp: str = "",
+    sso: bool = False,
 ) -> str:
     normalized_customer_no = customer_no.strip() or "0"
     normalized_account_id = account_id.strip() or "0"
@@ -433,7 +439,7 @@ def _build_login_payload_for_credentials(
         "P": settings.matriks_platform.strip() or _DEFAULT_PLATFORM,
         "Language": settings.matriks_language.strip() or _DEFAULT_LANGUAGE,
         "ngsw-bypass": "true",
-        "sso": "false",
+        "sso": "true" if sso else "false",
         "Username": username.strip(),
         "Password": password.strip(),
         "AccountID": normalized_account_id,
@@ -500,6 +506,7 @@ def login_with_bridge_credentials(
     session_key: str = "",
     action: str = "",
     otp: str = "",
+    sso: bool = False,
 ) -> str:
     integration_url = settings.matriks_integration_url.strip() or _DEFAULT_INTEGRATION_URL
     request_body = _build_login_payload_for_credentials(
@@ -510,6 +517,7 @@ def login_with_bridge_credentials(
         session_key=session_key,
         action=action,
         otp=otp,
+        sso=sso,
     ).encode("utf-8")
     req = request.Request(
         integration_url,

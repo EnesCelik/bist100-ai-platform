@@ -12,6 +12,14 @@ dependencies = [
   "psycopg[binary]>=3.2,<4",
   "alembic>=1.14,<2",
   "streamlit>=1.44,<2",
+  "isyatirimhisse>=5.0,<6",
+  "anthropic>=0.40,<2",
+  "websocket-client>=1.9,<2",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3,<9",
 ]
 
 [build-system]

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -14,6 +15,8 @@ from app.data_sources.market_data.provider import get_market_ohlcv, get_market_s
 from app.models.schemas import RuntimeHealthResponse
 from app.services.market_calendar_service import check_bist_trading_day
 from app.services.market_data_cache_service import cleanup_market_data_cache
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -55,6 +58,22 @@ class SchedulerRuntimeState:
     last_agent_intraday_telegram_completed_at: str | None = None
     last_agent_intraday_telegram_status: str | None = None
     last_agent_intraday_telegram_message: str | None = None
+    last_token_refresh_started_at: str | None = None
+    last_token_refresh_completed_at: str | None = None
+    last_token_refresh_status: str | None = None
+    last_token_refresh_message: str | None = None
+    last_policy_rate_watch_started_at: str | None = None
+    last_policy_rate_watch_completed_at: str | None = None
+    last_policy_rate_watch_status: str | None = None
+    last_policy_rate_watch_message: str | None = None
+    last_real_rate_watch_started_at: str | None = None
+    last_real_rate_watch_completed_at: str | None = None
+    last_real_rate_watch_status: str | None = None
+    last_real_rate_watch_message: str | None = None
+    last_kap_disclosure_watch_started_at: str | None = None
+    last_kap_disclosure_watch_completed_at: str | None = None
+    last_kap_disclosure_watch_status: str | None = None
+    last_kap_disclosure_watch_message: str | None = None
 
 
 _runtime_state = SchedulerRuntimeState()
@@ -161,6 +180,26 @@ def get_runtime_health() -> RuntimeHealthResponse:
         last_agent_intraday_telegram_completed_at=_runtime_state.last_agent_intraday_telegram_completed_at,
         last_agent_intraday_telegram_status=_runtime_state.last_agent_intraday_telegram_status,
         last_agent_intraday_telegram_message=_runtime_state.last_agent_intraday_telegram_message,
+        token_refresh_enabled=settings.scheduler_enabled and settings.scheduler_token_refresh_enabled,
+        last_token_refresh_started_at=_runtime_state.last_token_refresh_started_at,
+        last_token_refresh_completed_at=_runtime_state.last_token_refresh_completed_at,
+        last_token_refresh_status=_runtime_state.last_token_refresh_status,
+        last_token_refresh_message=_runtime_state.last_token_refresh_message,
+        policy_rate_watch_enabled=settings.scheduler_enabled and settings.scheduler_policy_rate_watch_enabled,
+        last_policy_rate_watch_started_at=_runtime_state.last_policy_rate_watch_started_at,
+        last_policy_rate_watch_completed_at=_runtime_state.last_policy_rate_watch_completed_at,
+        last_policy_rate_watch_status=_runtime_state.last_policy_rate_watch_status,
+        last_policy_rate_watch_message=_runtime_state.last_policy_rate_watch_message,
+        real_rate_watch_enabled=settings.scheduler_enabled and settings.scheduler_real_rate_watch_enabled,
+        last_real_rate_watch_started_at=_runtime_state.last_real_rate_watch_started_at,
+        last_real_rate_watch_completed_at=_runtime_state.last_real_rate_watch_completed_at,
+        last_real_rate_watch_status=_runtime_state.last_real_rate_watch_status,
+        last_real_rate_watch_message=_runtime_state.last_real_rate_watch_message,
+        kap_disclosure_watch_enabled=settings.scheduler_enabled and settings.scheduler_kap_disclosure_watch_enabled,
+        last_kap_disclosure_watch_started_at=_runtime_state.last_kap_disclosure_watch_started_at,
+        last_kap_disclosure_watch_completed_at=_runtime_state.last_kap_disclosure_watch_completed_at,
+        last_kap_disclosure_watch_status=_runtime_state.last_kap_disclosure_watch_status,
+        last_kap_disclosure_watch_message=_runtime_state.last_kap_disclosure_watch_message,
     )
 
 
@@ -322,7 +361,7 @@ def _run_trading_agent_job(job_name: str) -> None:
         _runtime_state.last_trading_agent_message = f"{job_name}: {exc}"
 
 
-def _run_agent_morning_telegram_once() -> None:
+def _run_agent_morning_telegram_once() -> bool:
     from app.services.trading_agent_telegram_service import send_morning_opening_telegram
 
     _runtime_state.last_agent_morning_telegram_started_at = _utc_now_iso()
@@ -334,13 +373,18 @@ def _run_agent_morning_telegram_once() -> None:
         _runtime_state.last_agent_morning_telegram_message = (
             f"reason={result.reason}, chat_id_configured={result.chat_id_configured}, tickers={','.join(result.tickers) if result.tickers else 'none'}"
         )
+        if result.status != "sent":
+            logger.warning("Morning telegram not sent: %s", _runtime_state.last_agent_morning_telegram_message)
+        return result.status == "sent"
     except Exception as exc:  # noqa: BLE001
         _runtime_state.last_agent_morning_telegram_completed_at = _utc_now_iso()
         _runtime_state.last_agent_morning_telegram_status = "error"
         _runtime_state.last_agent_morning_telegram_message = str(exc)
+        logger.exception("Morning telegram job raised an exception")
+        return False
 
 
-def _run_agent_intraday_telegram_once(slot: str) -> None:
+def _run_agent_intraday_telegram_once(slot: str) -> bool:
     from app.services.trading_agent_telegram_service import send_intraday_momentum_telegram
 
     _runtime_state.last_agent_intraday_telegram_started_at = _utc_now_iso()
@@ -353,10 +397,113 @@ def _run_agent_intraday_telegram_once(slot: str) -> None:
             f"slot={slot}, reason={result.reason}, chat_id_configured={result.chat_id_configured}, "
             f"tickers={','.join(result.tickers) if result.tickers else 'none'}"
         )
+        if result.status != "sent":
+            logger.warning("Intraday telegram not sent: %s", _runtime_state.last_agent_intraday_telegram_message)
+        return result.status == "sent"
     except Exception as exc:  # noqa: BLE001
         _runtime_state.last_agent_intraday_telegram_completed_at = _utc_now_iso()
         _runtime_state.last_agent_intraday_telegram_status = "error"
         _runtime_state.last_agent_intraday_telegram_message = f"slot={slot}: {exc}"
+        logger.exception("Intraday telegram job raised an exception (slot=%s)", slot)
+        return False
+
+
+# Dis servislere (Garanti SSO, TCMB EVDS, KAP) yapilan cagrilar beklenenden
+# uzun surebilir (ornegin bir socket, urllib'in kendi timeout'unu es gecip
+# askida kalabilir). Bu ust sinir olmadan tek bir job'un donmesi, tek sıralı
+# scheduler dongusunu sonsuza kadar kilitleyip diger tum job'lari da durdurur.
+_JOB_HARD_TIMEOUT_SECONDS = 180
+
+
+async def _run_with_timeout(func, job_name: str) -> None:
+    try:
+        await asyncio.wait_for(asyncio.to_thread(func), timeout=_JOB_HARD_TIMEOUT_SECONDS)
+    except TimeoutError:
+        logger.error(
+            "%s zaman asimina ugradi (%ss) - scheduler dongusu bu job'u birakip devam ediyor",
+            job_name,
+            _JOB_HARD_TIMEOUT_SECONDS,
+        )
+
+
+def _run_token_refresh_once() -> None:
+    from app.services.matriks_token_refresh_service import refresh_market_data_token_if_needed
+
+    _runtime_state.last_token_refresh_started_at = _utc_now_iso()
+    _runtime_state.last_token_refresh_status = "running"
+    try:
+        result = refresh_market_data_token_if_needed(buffer_minutes=settings.scheduler_token_refresh_buffer_minutes)
+        _runtime_state.last_token_refresh_completed_at = _utc_now_iso()
+        _runtime_state.last_token_refresh_status = result.status
+        _runtime_state.last_token_refresh_message = result.message
+        if result.status == "refreshed":
+            logger.info("Matriks MarketDataToken yenilendi: %s", result.message)
+        elif result.status in ("pending_approval", "failed"):
+            # matriks_token_refresh_service, mobil onay linkini kendi Telegram
+            # mesajiyla zaten gonderdi (cooldown'lu) - burada sadece logluyoruz.
+            logger.warning("Matriks token yenileme %s: %s", result.status, result.message)
+    except Exception as exc:  # noqa: BLE001
+        _runtime_state.last_token_refresh_completed_at = _utc_now_iso()
+        _runtime_state.last_token_refresh_status = "error"
+        _runtime_state.last_token_refresh_message = str(exc)
+        logger.exception("Token yenileme job'u hata verdi")
+
+
+def _run_policy_rate_watch_once() -> None:
+    from app.services.macro_rate_watch_service import run_policy_rate_watch
+
+    _runtime_state.last_policy_rate_watch_started_at = _utc_now_iso()
+    _runtime_state.last_policy_rate_watch_status = "running"
+    try:
+        result = run_policy_rate_watch(ingest=True)
+        _runtime_state.last_policy_rate_watch_completed_at = _utc_now_iso()
+        _runtime_state.last_policy_rate_watch_status = result.status
+        _runtime_state.last_policy_rate_watch_message = (
+            f"latest={result.latest_value}, previous={result.previous_value}, tickers_applied={result.tickers_applied}"
+        )
+    except Exception as exc:  # noqa: BLE001
+        _runtime_state.last_policy_rate_watch_completed_at = _utc_now_iso()
+        _runtime_state.last_policy_rate_watch_status = "error"
+        _runtime_state.last_policy_rate_watch_message = str(exc)
+        logger.exception("Policy rate watch job hata verdi")
+
+
+def _run_real_rate_watch_once() -> None:
+    from app.services.real_rate_watch_service import run_real_rate_watch
+
+    _runtime_state.last_real_rate_watch_started_at = _utc_now_iso()
+    _runtime_state.last_real_rate_watch_status = "running"
+    try:
+        result = run_real_rate_watch(ingest=True)
+        _runtime_state.last_real_rate_watch_completed_at = _utc_now_iso()
+        _runtime_state.last_real_rate_watch_status = result.status
+        _runtime_state.last_real_rate_watch_message = (
+            f"real_rate={result.real_rate}, previous={result.previous_real_rate}, tickers_applied={result.tickers_applied}"
+        )
+    except Exception as exc:  # noqa: BLE001
+        _runtime_state.last_real_rate_watch_completed_at = _utc_now_iso()
+        _runtime_state.last_real_rate_watch_status = "error"
+        _runtime_state.last_real_rate_watch_message = str(exc)
+        logger.exception("Real rate watch job hata verdi")
+
+
+def _run_kap_disclosure_watch_once() -> None:
+    from app.services.kap_disclosure_watch_service import run_kap_disclosure_watch
+
+    _runtime_state.last_kap_disclosure_watch_started_at = _utc_now_iso()
+    _runtime_state.last_kap_disclosure_watch_status = "running"
+    try:
+        result = run_kap_disclosure_watch(ingest=True)
+        _runtime_state.last_kap_disclosure_watch_completed_at = _utc_now_iso()
+        _runtime_state.last_kap_disclosure_watch_status = "ok"
+        _runtime_state.last_kap_disclosure_watch_message = (
+            f"fetched={result.fetched_count}, matched={result.matched_count}, ingested={result.ingested_count}"
+        )
+    except Exception as exc:  # noqa: BLE001
+        _runtime_state.last_kap_disclosure_watch_completed_at = _utc_now_iso()
+        _runtime_state.last_kap_disclosure_watch_status = "error"
+        _runtime_state.last_kap_disclosure_watch_message = str(exc)
+        logger.exception("KAP disclosure watch job hata verdi")
 
 
 def _time_reached(now_local: datetime, hour: int, minute: int) -> bool:
@@ -401,6 +548,14 @@ async def _scheduler_loop() -> None:
     global_news_watch_interval = max(settings.global_news_watch_interval_minutes, 1)
     prefetch_initial_delay = max(settings.scheduler_prefetch_initial_delay_minutes, 0)
     paper_log_initial_delay = max(settings.scheduler_paper_log_initial_delay_minutes, 0)
+    token_refresh_interval = max(settings.scheduler_token_refresh_interval_minutes, 1)
+    policy_rate_watch_interval = max(settings.scheduler_policy_rate_watch_interval_minutes, 1)
+    real_rate_watch_interval = max(settings.scheduler_real_rate_watch_interval_minutes, 1)
+    kap_disclosure_watch_interval = max(settings.scheduler_kap_disclosure_watch_interval_minutes, 1)
+    next_token_refresh_at = datetime.utcnow()
+    next_policy_rate_watch_at = datetime.utcnow()
+    next_real_rate_watch_at = datetime.utcnow()
+    next_kap_disclosure_watch_at = datetime.utcnow()
     next_cleanup_at = datetime.utcnow()
     next_prefetch_at = datetime.utcnow() + timedelta(minutes=prefetch_initial_delay)
     next_paper_log_at = datetime.utcnow() + timedelta(minutes=paper_log_initial_delay)
@@ -414,6 +569,22 @@ async def _scheduler_loop() -> None:
         local_date = now_local.date().isoformat()
         calendar_check = check_bist_trading_day(now_local)
         is_trading_day = calendar_check.is_trading_day
+
+        if settings.scheduler_token_refresh_enabled and now >= next_token_refresh_at:
+            await _run_with_timeout(_run_token_refresh_once, "token_refresh")
+            next_token_refresh_at = datetime.utcnow() + timedelta(minutes=token_refresh_interval)
+
+        if settings.scheduler_policy_rate_watch_enabled and now >= next_policy_rate_watch_at:
+            await _run_with_timeout(_run_policy_rate_watch_once, "policy_rate_watch")
+            next_policy_rate_watch_at = datetime.utcnow() + timedelta(minutes=policy_rate_watch_interval)
+
+        if settings.scheduler_real_rate_watch_enabled and now >= next_real_rate_watch_at:
+            await _run_with_timeout(_run_real_rate_watch_once, "real_rate_watch")
+            next_real_rate_watch_at = datetime.utcnow() + timedelta(minutes=real_rate_watch_interval)
+
+        if settings.scheduler_kap_disclosure_watch_enabled and now >= next_kap_disclosure_watch_at:
+            await _run_with_timeout(_run_kap_disclosure_watch_once, "kap_disclosure_watch")
+            next_kap_disclosure_watch_at = datetime.utcnow() + timedelta(minutes=kap_disclosure_watch_interval)
 
         if now >= next_cleanup_at:
             await asyncio.to_thread(_run_cleanup_once)
@@ -435,9 +606,13 @@ async def _scheduler_loop() -> None:
             settings.scheduler_agent_morning_telegram_hour,
             settings.scheduler_agent_morning_telegram_minute,
         ):
-            await asyncio.to_thread(_run_agent_morning_telegram_once)
-            _runtime_state.last_agent_morning_telegram_date = local_date
-            _save_persistent_state()
+            morning_sent = await asyncio.to_thread(_run_agent_morning_telegram_once)
+            # Basarisiz gonderimi "bugun icin tamamlandi" olarak isaretlemiyoruz;
+            # aksi halde bir sonraki loop turunda tekrar denenmez ve gun boyunca
+            # sessizce hic mesaj gitmemis olur.
+            if morning_sent:
+                _runtime_state.last_agent_morning_telegram_date = local_date
+                _save_persistent_state()
 
         if settings.scheduler_prefetch_enabled and now >= next_prefetch_at and not morning_telegram_pending:
             await asyncio.to_thread(_run_prefetch_once)
@@ -453,10 +628,13 @@ async def _scheduler_loop() -> None:
                     settings.scheduler_trading_agent_finalize_hour,
                     settings.scheduler_trading_agent_finalize_minute,
                 ):
-                    await asyncio.to_thread(_run_agent_intraday_telegram_once, slot)
-                    sent_slots[slot] = local_date
-                    _runtime_state.last_agent_intraday_telegram_dates = sent_slots
-                    _save_persistent_state()
+                    intraday_sent = await asyncio.to_thread(_run_agent_intraday_telegram_once, slot)
+                    # Ayni mantik: basarisiz gonderimi kalici olarak "islendi"
+                    # isaretlemiyoruz, pencere acikken tekrar denensin.
+                    if intraday_sent:
+                        sent_slots[slot] = local_date
+                        _runtime_state.last_agent_intraday_telegram_dates = sent_slots
+                        _save_persistent_state()
 
         if settings.scheduler_paper_log_enabled and now >= next_paper_log_at:
             prefetch_ready = (

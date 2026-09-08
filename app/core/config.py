@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     app_env: str = "local"
     app_name: str = "BIST100 AI Platform"
     api_v1_prefix: str = "/api/v1"
+    log_level: str = "INFO"
     signal_enabled: bool = False
     paper_trade_enabled: bool = False
 
@@ -28,6 +29,17 @@ class Settings(BaseSettings):
     eodhd_timeout_seconds: float = 8.0
     kap_sectors_url: str = "https://www.kap.org.tr/en/Sektorler"
     kap_timeout_seconds: float = 10.0
+    tcmb_evds_api_key: str = ""
+    # evds2.tcmb.gov.tr/service/evds eski dokumanlarda gecen adres artik SPA'ya
+    # (evds3) yonlendiriyor ve API tabani /igmevdsms-dis altina tasindi.
+    tcmb_evds_base_url: str = "https://evds3.tcmb.gov.tr/igmevdsms-dis"
+    tcmb_evds_timeout_seconds: float = 10.0
+    scheduler_policy_rate_watch_enabled: bool = True
+    scheduler_policy_rate_watch_interval_minutes: int = 240
+    scheduler_real_rate_watch_enabled: bool = True
+    scheduler_real_rate_watch_interval_minutes: int = 240
+    scheduler_kap_disclosure_watch_enabled: bool = True
+    scheduler_kap_disclosure_watch_interval_minutes: int = 15
     news_impact_provider: str = "marketaux"
     global_news_watch_enabled: bool = False
     global_news_watch_interval_minutes: int = 30
@@ -75,6 +87,8 @@ class Settings(BaseSettings):
     scheduler_paper_trade_open_limit: int = 5
     scheduler_paper_trade_max_open_trades: int = 5
     scheduler_paper_trade_min_score: float = 70.0
+    circuit_breaker_enabled: bool = True
+    circuit_breaker_open_position_loss_percent: float = 5.0
     scheduler_trading_agent_enabled: bool = False
     scheduler_trading_agent_opening_hour: int = 9
     scheduler_trading_agent_opening_minute: int = 55
@@ -96,6 +110,12 @@ class Settings(BaseSettings):
     bist_market_holidays: str = ""
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
+    anthropic_api_key: str = ""
+    llm_synthesis_enabled: bool = False
+    llm_model: str = "claude-opus-5"
+    llm_effort: str = "low"
+    llm_max_tokens: int = 700
+    llm_timeout_seconds: float = 20.0
     paper_trade_protect_profit_enabled: bool = True
     paper_trade_protect_level_1_percent: float = 2.0
     paper_trade_protect_level_1_realized_percent: float = 50.0
@@ -133,6 +153,11 @@ class Settings(BaseSettings):
     matriks_bar_period_1w: str = ""
     matriks_timeout_seconds: float = 5.0
     matriks_verify_ssl: bool = True
+
+    # MarketDataToken otomatik yenileme scheduler'i.
+    scheduler_token_refresh_enabled: bool = True
+    scheduler_token_refresh_interval_minutes: int = 5
+    scheduler_token_refresh_buffer_minutes: int = 45
 
     # Matriks terminal DDE bridge ayarlari.
     matriks_dde_bridge_base_url: str = "http://127.0.0.1:8765"

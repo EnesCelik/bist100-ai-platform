@@ -401,8 +401,12 @@ def get_paper_decision_performance_summary(limit: int = 50, ticker: str | None =
         bias_key = (item.calibration_bias or "unknown").lower()
         calibration_bias_counts[bias_key] = calibration_bias_counts.get(bias_key, 0) + 1
 
-    win_rate = round(win_count / resolved_count, 2) if resolved_count else None
-    loss_rate = round(loss_count / resolved_count, 2) if resolved_count else None
+    # "open" (bar verisi var ama ne TP ne SL calisti) kararsiz bir durum, "kazandi/kaybetti"
+    # degil - onu payda disina alinca gercek isabet oranini olcuyoruz. resolved_count'a
+    # (win+loss+mixed+open) bolmek win_rate'i yapay olarak dusuk gosteriyordu.
+    decided_count = win_count + loss_count + mixed_count
+    win_rate = round(win_count / decided_count, 2) if decided_count else None
+    loss_rate = round(loss_count / decided_count, 2) if decided_count else None
 
     close_returns = [item.close_return_percent for item in resolved_items if item.close_return_percent is not None]
     max_upside = [item.max_upside_percent for item in resolved_items if item.max_upside_percent is not None]
@@ -412,9 +416,12 @@ def get_paper_decision_performance_summary(limit: int = 50, ticker: str | None =
     average_max_upside_percent = round(sum(max_upside) / len(max_upside), 2) if max_upside else None
     average_max_drawdown_percent = round(sum(max_drawdown) / len(max_drawdown), 2) if max_drawdown else None
 
+    win_rate_text = f"%{win_rate * 100:.0f}" if win_rate is not None else "n/a"
     summary = (
         f"Toplam {total_logs} paper karar kaydinin {pending_count} adedi henuz yeni bar bekliyor. "
-        f"Cozulen kayit sayisi {resolved_count}; win {win_count}, loss {loss_count}, mixed {mixed_count}, open {open_count}. "
+        f"Cozulen kayit sayisi {resolved_count}; bunlarin {decided_count} tanesi karara bagli (win {win_count}, "
+        f"loss {loss_count}, mixed {mixed_count}), {open_count} tanesi hala acik/kararsiz. "
+        f"Karara baglananlar icinde win_rate {win_rate_text}. "
         f"Stance dagilimi bullish {bullish_count}, neutral {neutral_count}, bearish {bearish_count}."
     )
     if average_close_return_percent is not None:
@@ -431,6 +438,7 @@ def get_paper_decision_performance_summary(limit: int = 50, ticker: str | None =
         loss_count=loss_count,
         mixed_count=mixed_count,
         resolved_count=resolved_count,
+        decided_count=decided_count,
         bullish_count=bullish_count,
         neutral_count=neutral_count,
         bearish_count=bearish_count,
@@ -470,8 +478,11 @@ def get_paper_decision_resolved_performance_summary(limit: int = 50, ticker: str
     open_count = sum(1 for item in resolved_items if item.outcome_label == "open")
 
     resolution_rate = round(resolved_count / total_logs, 2) if total_logs else None
-    resolved_win_rate = round(win_count / resolved_count, 2) if resolved_count else None
-    resolved_loss_rate = round(loss_count / resolved_count, 2) if resolved_count else None
+    # Ayni duzeltme: "open" kararsiz bir durum oldugu icin decided_count (win+loss+mixed)
+    # payda olarak kullaniliyor, resolved_count (open dahil) degil.
+    decided_count = win_count + loss_count + mixed_count
+    resolved_win_rate = round(win_count / decided_count, 2) if decided_count else None
+    resolved_loss_rate = round(loss_count / decided_count, 2) if decided_count else None
 
     positive_close_count = sum(1 for item in resolved_items if item.close_return_percent is not None and item.close_return_percent > 0)
     resolved_positive_close_rate = round(positive_close_count / resolved_count, 2) if resolved_count else None
@@ -512,9 +523,11 @@ def get_paper_decision_resolved_performance_summary(limit: int = 50, ticker: str
         worst_ticker = worst_item.ticker
         worst_close_return_percent = worst_item.close_return_percent
 
+    resolved_win_rate_text = f"%{resolved_win_rate * 100:.0f}" if resolved_win_rate is not None else "n/a"
     summary = (
         f"Secilen pencere icinde {total_logs} kaydin {resolved_count} adedi cozuldu, {pending_count} adedi beklemede. "
-        f"Resolved tarafta win {win_count}, loss {loss_count}, mixed {mixed_count}, open {open_count}."
+        f"Resolved tarafta {decided_count} tanesi karara bagli (win {win_count}, loss {loss_count}, mixed {mixed_count}), "
+        f"{open_count} tanesi hala acik/kararsiz. Karara baglananlar icinde win_rate {resolved_win_rate_text}."
     )
     if average_close_return_percent is not None:
         summary += f" Ortalama resolved kapanis getirisi %{average_close_return_percent}."
@@ -533,6 +546,7 @@ def get_paper_decision_resolved_performance_summary(limit: int = 50, ticker: str
         loss_count=loss_count,
         mixed_count=mixed_count,
         open_count=open_count,
+        decided_count=decided_count,
         resolved_win_rate=resolved_win_rate,
         resolved_loss_rate=resolved_loss_rate,
         resolved_positive_close_rate=resolved_positive_close_rate,

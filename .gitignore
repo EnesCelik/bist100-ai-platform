@@ -11,4 +11,9 @@ __pycache__/
 *.db
 *.log
 data/runtime_scheduler_state.json
+data/documents/kap_watch_state.json
+data/macro_events/tcmb_rate_watch_state.json
+data/macro_events/tcmb_real_rate_watch_state.json
+data/trading_safety_state.json
+data/llm_traces.jsonl
 bist100_ai_platform.egg-info/

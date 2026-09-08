@@ -12,6 +12,7 @@ from app.db.models import PaperTrade
 from app.db.session import SessionLocal, ensure_runtime_schema
 from app.models.schemas import (
     OpportunityScanItem,
+    PaperTradeAllTimeSummaryResponse,
     PaperTradeDailyReportResponse,
     PaperTradeFinalizeResponse,
     PaperTradeHistoryResponse,
@@ -22,6 +23,7 @@ from app.models.schemas import (
     ManualBasketCreateRequest,
 )
 from app.services.market_scan_service import scan_opportunities
+from app.services.trading_safety_service import halt_trading, is_trading_halted
 
 ISTANBUL_TZ = ZoneInfo("Europe/Istanbul")
 
@@ -269,6 +271,15 @@ def _create_trade_from_opportunity(item: OpportunityScanItem) -> PaperTrade | No
 
 def open_top_opportunity_trades(limit: int = 5, min_score: float = 70.0, max_open_trades: int | None = None) -> PaperTradeOpenResponse:
     ensure_runtime_schema()
+    if is_trading_halted():
+        return PaperTradeOpenResponse(
+            opened_count=0,
+            skipped_count=0,
+            open_trade_count=0,
+            tickers=[],
+            items=[],
+            halted_reason="Trading halted (kill-switch or circuit breaker); no new positions opened.",
+        )
     max_open = max(max_open_trades if max_open_trades is not None else settings.scheduler_paper_trade_max_open_trades, 1)
 
     opened_rows: list[PaperTrade] = []
@@ -562,8 +573,85 @@ def get_daily_paper_trade_report(trade_date: str | None = None, strategy_name: s
     )
 
 
+def get_all_time_paper_trade_summary(strategy_name: str | None = None) -> PaperTradeAllTimeSummaryResponse:
+    ensure_runtime_schema()
+    normalized_strategy = strategy_name.strip() if strategy_name else None
+
+    with SessionLocal() as session:
+        statement = select(PaperTrade)
+        if normalized_strategy:
+            statement = statement.where(PaperTrade.strategy_name == normalized_strategy)
+        rows = session.execute(statement).scalars().all()
+
+    open_rows = [row for row in rows if row.status == "open"]
+    closed_rows = [row for row in rows if row.status == "closed"]
+
+    win_count = sum(1 for row in closed_rows if row.outcome == "win")
+    loss_count = sum(1 for row in closed_rows if row.outcome == "loss")
+    neutral_count = sum(1 for row in closed_rows if row.outcome == "neutral")
+    no_fill_count = sum(1 for row in closed_rows if row.outcome == "no_fill")
+    decided_count = win_count + loss_count + neutral_count
+    win_rate = round(win_count / decided_count, 2) if decided_count else None
+
+    total_capital_allocated = round(sum(float(row.capital_allocated) for row in rows), 2)
+    total_realized_pnl = round(sum(_realized_pnl(row) for row in rows), 2)
+    total_unrealized_pnl = round(sum(_open_unrealized_pnl(row) for row in open_rows), 2)
+    total_pnl = round(total_realized_pnl + total_unrealized_pnl, 2)
+    total_pnl_percent = round(total_pnl / total_capital_allocated * 100, 2) if total_capital_allocated else None
+
+    pnl_by_row = {row.id: _total_position_pnl(row) for row in rows}
+    best_ticker = worst_ticker = None
+    best_pnl = worst_pnl = None
+    if pnl_by_row:
+        best_row = max(rows, key=lambda row: pnl_by_row[row.id])
+        worst_row = min(rows, key=lambda row: pnl_by_row[row.id])
+        best_ticker, best_pnl = best_row.ticker, pnl_by_row[best_row.id]
+        worst_ticker, worst_pnl = worst_row.ticker, pnl_by_row[worst_row.id]
+
+    win_rate_text = f"%{win_rate * 100:.0f}" if win_rate is not None else "n/a"
+    summary = (
+        f"Toplam {len(rows)} paper trade ({len(open_rows)} acik, {len(closed_rows)} kapali). "
+        f"Kapali islemlerden {decided_count} tanesi karara bagli (win {win_count}, loss {loss_count}, neutral {neutral_count}), "
+        f"{no_fill_count} tanesi hic gerceklesmedi. Karara baglananlar icinde win_rate {win_rate_text}. "
+        f"Toplam PnL {total_pnl} TL (gerceklesen {total_realized_pnl} TL + acik pozisyon {total_unrealized_pnl} TL), "
+        f"tahsis edilen sermayenin %{total_pnl_percent if total_pnl_percent is not None else 0}'i."
+    )
+
+    return PaperTradeAllTimeSummaryResponse(
+        strategy_name=normalized_strategy,
+        total_trades=len(rows),
+        open_count=len(open_rows),
+        closed_count=len(closed_rows),
+        win_count=win_count,
+        loss_count=loss_count,
+        neutral_count=neutral_count,
+        no_fill_count=no_fill_count,
+        decided_count=decided_count,
+        win_rate=win_rate,
+        total_capital_allocated_try=total_capital_allocated,
+        total_realized_pnl_try=total_realized_pnl,
+        total_unrealized_pnl_try=total_unrealized_pnl,
+        total_pnl_try=total_pnl,
+        total_pnl_percent=total_pnl_percent,
+        best_ticker=best_ticker,
+        best_pnl_try=best_pnl,
+        worst_ticker=worst_ticker,
+        worst_pnl_try=worst_pnl,
+        summary=summary,
+    )
+
+
 def create_manual_basket(request: ManualBasketCreateRequest) -> PaperTradeOpenResponse:
     ensure_runtime_schema()
+    if is_trading_halted():
+        return PaperTradeOpenResponse(
+            opened_count=0,
+            skipped_count=0,
+            open_trade_count=0,
+            tickers=[],
+            items=[],
+            halted_reason="Trading halted (kill-switch or circuit breaker); no new positions opened.",
+        )
     returned_rows: list[PaperTrade] = []
     actual_opened_count = 0
     strategy_name = request.strategy_name.strip() or "manual_morning_basket"
@@ -657,8 +745,41 @@ def create_manual_basket(request: ManualBasketCreateRequest) -> PaperTradeOpenRe
     )
 
 
+def evaluate_circuit_breaker() -> bool:
+    """Acik pozisyonlarin toplam gerceklesmemis zarari, tahsis edilen sermayenin
+    esik yuzdesini asarsa yeni pozisyon acilmasini otomatik durdurur. Zaten
+    durdurulmus veya devre disi birakilmissa hicbir sey yapmaz."""
+    if not settings.circuit_breaker_enabled or is_trading_halted():
+        return False
+
+    ensure_runtime_schema()
+    with SessionLocal() as session:
+        open_rows = session.execute(select(PaperTrade).where(PaperTrade.status == "open")).scalars().all()
+
+    if not open_rows:
+        return False
+
+    total_unrealized_pnl = sum(_open_unrealized_pnl(row) for row in open_rows)
+    total_capital_at_risk = sum(float(row.capital_allocated) * (_remaining_percent(row) / 100.0) for row in open_rows)
+    if total_capital_at_risk <= 0:
+        return False
+
+    drawdown_percent = total_unrealized_pnl / total_capital_at_risk * 100.0
+    if drawdown_percent <= -abs(settings.circuit_breaker_open_position_loss_percent):
+        halt_trading(
+            reason=(
+                f"Acik pozisyonlarin toplam gerceklesmemis zarari %{drawdown_percent:.2f} "
+                f"(esik: -%{settings.circuit_breaker_open_position_loss_percent})."
+            ),
+            triggered_by="circuit_breaker",
+        )
+        return True
+    return False
+
+
 def run_paper_trade_cycle(open_limit: int = 5, min_score: float = 70.0, max_open_trades: int | None = None) -> dict:
     monitor_result = monitor_open_trades()
+    evaluate_circuit_breaker()
     open_result = open_top_opportunity_trades(limit=open_limit, min_score=min_score, max_open_trades=max_open_trades) if is_market_session() else None
     return {
         "monitor_checked_count": monitor_result.checked_count,

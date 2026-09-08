@@ -1,4 +1,5 @@
 from app.agent.router import build_citations, detect_route_type, extract_ticker
+from app.core.config import settings
 from app.data_sources.company_data.provider import list_company_records
 from app.data_sources.market_data.provider import get_market_snapshot
 from app.models.schemas import AnalysisEvidence, AskResponse, RecommendationPolicyResult
@@ -7,6 +8,7 @@ from app.services.chart_feature_service import get_chart_feature_summary
 from app.services.event_service import get_event_summary
 from app.services.fundamental_service import get_fundamental_summary
 from app.services.institutional_flow_service import get_institutional_flow_summary
+from app.services.llm_synthesis_service import synthesize_analysis_answer
 from app.services.macro_event_service import get_macro_event_summary
 from app.services.news_impact_service import fetch_optional_news_impact
 from app.services.recommendation_policy import derive_recommendation
@@ -1025,6 +1027,13 @@ def build_analysis_response_for_ticker(ticker: str, question: str | None = None)
     trade_level_note = _build_trade_level_note(chart_feature_summary)
     if trade_level_note is not None:
         answer = f"{answer} {trade_level_note}"
+
+    if settings.llm_synthesis_enabled and analysis_evidence:
+        llm_result = synthesize_analysis_answer(normalized_ticker, recommendation, analysis_evidence)
+        if llm_result is not None:
+            answer = llm_result.text
+            used_sources.append(f"llm_synthesis:{llm_result.model}")
+
     confidence = _calculate_analysis_confidence(analysis_evidence, recommendation)
 
     reasoning_layers = ["teknik feature", "sinyal", "temel", "kurumsal akim", "sirket olayi"]

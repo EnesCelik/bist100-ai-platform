@@ -175,6 +175,9 @@ def complete_garanti_sso_login(
             token = login_with_bridge_credentials(
                 username=credentials["URT"],
                 password=credentials["HAS"],
+                customer_no=settings.matriks_customer_no,
+                account_id=settings.matriks_account_id,
+                sso=True,
             )
             expiry = decode_market_data_token_expiry(token)
             if token:

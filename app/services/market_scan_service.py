@@ -6,6 +6,7 @@ from sqlalchemy import select
 from app.core.config import settings
 from app.data_sources.company_data.provider import get_company_record, list_company_records
 from app.data_sources.market_data.provider import get_active_market_data_provider, get_market_ohlcv, get_market_snapshot, get_order_book_pressure
+from app.realtime_depth.order_flow_adapter import get_realtime_order_book_pressure
 from app.db.models import ScanSnapshot
 from app.db.session import SessionLocal, ensure_runtime_schema
 from app.models.schemas import (
@@ -474,7 +475,11 @@ def _liquidity_component(market_snapshot) -> tuple[float, float | None, str, lis
 
 
 def _order_book_pressure_component(ticker: str) -> tuple[float, str | None, float | None, list[str], list[str]]:
-    pressure = get_order_book_pressure(ticker, levels=10)
+    # Once canli WebSocket derinligini dener (Pay Duzey 2); veri yoksa
+    # (abone olunmamis, akis kapali vb.) eski REST tabanli kaynaga duser.
+    pressure = get_realtime_order_book_pressure(ticker)
+    if not pressure.available:
+        pressure = get_order_book_pressure(ticker, levels=10)
     if not pressure.available:
         return 0.0, pressure.pressure_bucket, pressure.bid_ask_imbalance, [], []
 
@@ -1174,7 +1179,7 @@ def _build_scan_analysis(company):
     ticker = company.ticker
     chart_summary = get_chart_feature_summary(ticker)
     signal_summary = build_signal_summary_from_chart_feature(chart_summary)
-    fundamental_summary = get_fundamental_summary(ticker)
+    fundamental_summary = get_fundamental_summary(ticker, use_cache_only=True)
     institutional_flow_summary = get_institutional_flow_summary(ticker)
     event_summary = get_event_summary(ticker)
     macro_event_summary = get_macro_event_summary(ticker)
