@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+import pandas as pd
 from fastapi import HTTPException
 from uuid import uuid4
 
@@ -233,9 +234,20 @@ def _bullish_like_for_log(row: PaperDecisionLog) -> bool:
     return row.trade_setup in {"pullback_buy", "trend_follow", "breakout_watch", "range_trade", ""}
 
 
-def _build_paper_outcome(row: PaperDecisionLog, timeframe: str = "1G", horizon_bars: int = 10) -> PaperDecisionOutcomeResponse:
+def _build_paper_outcome(
+    row: PaperDecisionLog,
+    timeframe: str = "1G",
+    horizon_bars: int = 10,
+    dataframe_cache: dict[tuple[str, str], pd.DataFrame] | None = None,
+) -> PaperDecisionOutcomeResponse:
     normalized_timeframe = timeframe.upper().strip() or "1G"
-    df = _load_replay_dataframe(row.ticker, normalized_timeframe, bars=max(240, horizon_bars + 180))
+    cache_key = (row.ticker.upper(), normalized_timeframe)
+    if dataframe_cache is not None and cache_key in dataframe_cache:
+        df = dataframe_cache[cache_key]
+    else:
+        df = _load_replay_dataframe(row.ticker, normalized_timeframe, bars=max(240, horizon_bars + 180))
+        if dataframe_cache is not None:
+            dataframe_cache[cache_key] = df
     decision_ts = row.created_at
     if decision_ts is None:
         raise HTTPException(status_code=400, detail="Decision timestamp missing")
@@ -363,12 +375,20 @@ def get_paper_decision_outcomes(limit: int = 20, ticker: str | None = None, sour
             query = query.filter(PaperDecisionLog.capture_batch_id == batch_id.strip())
         rows = query.order_by(PaperDecisionLog.created_at.desc()).limit(max(limit, 1)).all()
 
-    items = [_build_paper_outcome(row, timeframe=timeframe, horizon_bars=horizon_bars) for row in rows]
+    # Ayni ticker'in fiyat verisini defalarca yeniden cekmemek icin bu cagri
+    # icinde paylasilan bir onbellek kullaniyoruz - 500 kayitlik bir ozet
+    # genelde birkac yuz ayri tickerin degil, ~85 tickerin tekrar tekrar
+    # gorunmesinden olusuyor.
+    dataframe_cache: dict[tuple[str, str], pd.DataFrame] = {}
+    items = [
+        _build_paper_outcome(row, timeframe=timeframe, horizon_bars=horizon_bars, dataframe_cache=dataframe_cache)
+        for row in rows
+    ]
     return PaperDecisionOutcomeHistoryResponse(total=len(items), items=items)
 
 
 
-def get_paper_decision_performance_summary(limit: int = 50, ticker: str | None = None, source_mode: str | None = None, batch_id: str | None = None, timeframe: str = "1G", horizon_bars: int = 10) -> PaperDecisionPerformanceSummaryResponse:
+def get_paper_decision_performance_summary(limit: int = 500, ticker: str | None = None, source_mode: str | None = None, batch_id: str | None = None, timeframe: str = "1G", horizon_bars: int = 10) -> PaperDecisionPerformanceSummaryResponse:
     outcomes = get_paper_decision_outcomes(
         limit=limit,
         ticker=ticker,
@@ -453,7 +473,7 @@ def get_paper_decision_performance_summary(limit: int = 50, ticker: str | None =
     )
 
 
-def get_paper_decision_resolved_performance_summary(limit: int = 50, ticker: str | None = None, source_mode: str | None = None, batch_id: str | None = None, timeframe: str = "1G", horizon_bars: int = 10) -> PaperDecisionResolvedPerformanceSummaryResponse:
+def get_paper_decision_resolved_performance_summary(limit: int = 500, ticker: str | None = None, source_mode: str | None = None, batch_id: str | None = None, timeframe: str = "1G", horizon_bars: int = 10) -> PaperDecisionResolvedPerformanceSummaryResponse:
     outcomes = get_paper_decision_outcomes(
         limit=limit,
         ticker=ticker,

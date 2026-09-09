@@ -37,7 +37,10 @@ def list_paper_decision_history(
 
 @router.get("/evaluation/paper-log/summary", response_model=PaperDecisionPerformanceSummaryResponse)
 def get_paper_decision_summary(
-    limit: int = Query(default=50, ge=1, le=200),
+    # Varsayilan gunluk kayit hacmi (~30-50) nedeniyle dusuk bir limit ozeti
+    # surekli o gunun taze/pending kayitlariyla doldurup cozulmus (win/loss)
+    # kayitlarin hic gorunmemesine yol aciyordu - bkz. horizon_bars.
+    limit: int = Query(default=500, ge=1, le=5000),
     ticker: str | None = Query(default=None),
     source_mode: str | None = Query(default=None),
     batch_id: str | None = Query(default=None),
@@ -49,7 +52,7 @@ def get_paper_decision_summary(
 
 @router.get("/evaluation/paper-log/resolved-summary", response_model=PaperDecisionResolvedPerformanceSummaryResponse)
 def get_paper_decision_resolved_summary(
-    limit: int = Query(default=50, ge=1, le=200),
+    limit: int = Query(default=500, ge=1, le=5000),
     ticker: str | None = Query(default=None),
     source_mode: str | None = Query(default=None),
     batch_id: str | None = Query(default=None),
