@@ -19,7 +19,7 @@ def get_trade_calibration_cached(
     ticker: str,
     timeframe: str = "1G",
     horizon_bars: int = 10,
-    sample_size: int = 8,
+    sample_size: int = 20,
     step_bars: int = 5,
     use_cache_only: bool = False,
 ) -> ReplayCalibrationResponse | None:
@@ -314,7 +314,7 @@ def evaluate_trade_scorecard(
     universe_code: str = "bist100",
     timeframe: str = "1G",
     horizon_bars: int = 10,
-    sample_size: int = 8,
+    sample_size: int = 20,
     step_bars: int = 5,
     limit: int = 20,
     cache_only: bool = False,

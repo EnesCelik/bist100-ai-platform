@@ -782,7 +782,7 @@ def build_analysis_response_for_ticker(ticker: str, question: str | None = None)
     event_summary = get_event_summary(normalized_ticker)
     macro_event_summary = get_macro_event_summary(normalized_ticker)
     news_impact_summary = fetch_optional_news_impact(normalized_ticker, limit=5, days=7)
-    trade_calibration = get_trade_calibration_cached(normalized_ticker, timeframe="1G", horizon_bars=10, sample_size=8, step_bars=5)
+    trade_calibration = get_trade_calibration_cached(normalized_ticker, timeframe="1G", horizon_bars=10, sample_size=20, step_bars=5)
 
     if (
         chart_feature_summary is None

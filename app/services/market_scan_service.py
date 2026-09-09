@@ -942,7 +942,7 @@ def _build_opening_candidate(company) -> tuple[OpeningCandidateItem | None, bool
         get_chart_feature_summary(company.ticker, timeframe="4H"),
         market_snapshot.last_price,
     )
-    trade_calibration = get_trade_calibration_cached(company.ticker, timeframe="1G", horizon_bars=5, sample_size=8, step_bars=5, use_cache_only=True)
+    trade_calibration = get_trade_calibration_cached(company.ticker, timeframe="1G", horizon_bars=5, sample_size=20, step_bars=5, use_cache_only=True)
 
     volume_score, daily_volume_ratio, expected_volume_ratio, volume_momentum_bucket, volume_reasons, volume_risks = _opening_volume_component(market_snapshot, daily_chart)
     technical_score, technical_reasons, technical_risks = _opening_technical_component(daily_chart, intraday_1h, intraday_4h)
@@ -1230,7 +1230,7 @@ def _build_scan_analysis(company):
     event_summary = get_event_summary(ticker)
     macro_event_summary = get_macro_event_summary(ticker)
     news_impact_summary = fetch_optional_news_impact(ticker, limit=3, days=3)
-    trade_calibration = get_trade_calibration_cached(ticker, timeframe="1G", horizon_bars=10, sample_size=8, step_bars=5, use_cache_only=True)
+    trade_calibration = get_trade_calibration_cached(ticker, timeframe="1G", horizon_bars=10, sample_size=20, step_bars=5, use_cache_only=True)
 
     if (
         chart_summary is None

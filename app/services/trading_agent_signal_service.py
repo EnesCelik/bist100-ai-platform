@@ -101,7 +101,7 @@ def _calibration_component(ticker: str) -> tuple[float, list[str], list[str]]:
         ticker,
         timeframe="1G",
         horizon_bars=10,
-        sample_size=8,
+        sample_size=20,
         step_bars=5,
         use_cache_only=True,
     )

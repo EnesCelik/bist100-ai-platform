@@ -84,7 +84,7 @@ def _create_log_row(ticker: str, question: str, source_mode: str) -> PaperDecisi
     if snapshot is None:
         return None
     try:
-        calibration = get_trade_calibration_cached(ticker, timeframe="1G", horizon_bars=10, sample_size=8, step_bars=5)
+        calibration = get_trade_calibration_cached(ticker, timeframe="1G", horizon_bars=10, sample_size=20, step_bars=5)
     except HTTPException:
         calibration = None
 
@@ -116,7 +116,7 @@ def _create_log_row_from_scan_item(item: MarketScanItem, batch_id: str | None = 
     question = f"{normalized_ticker} hangi kosullarda artar ve hangi kosullarda duser?"
     chart = get_chart_feature_summary(normalized_ticker)
     try:
-        calibration = get_trade_calibration_cached(normalized_ticker, timeframe="1G", horizon_bars=10, sample_size=8, step_bars=5)
+        calibration = get_trade_calibration_cached(normalized_ticker, timeframe="1G", horizon_bars=10, sample_size=20, step_bars=5)
     except HTTPException:
         calibration = None
 

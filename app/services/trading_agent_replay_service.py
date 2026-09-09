@@ -22,7 +22,7 @@ def _assessment(calibration) -> str:
 def evaluate_agent_candidate_replay(
     signal_scores: list[TradingAgentSignalScoreItem],
     horizon_bars: int = 10,
-    sample_size: int = 8,
+    sample_size: int = 20,
 ) -> TradingAgentReplayResponse:
     items: list[TradingAgentReplayItem] = []
     for signal in signal_scores:
