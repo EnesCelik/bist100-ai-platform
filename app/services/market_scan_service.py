@@ -416,6 +416,19 @@ def _volume_pressure_component(market_snapshot, daily_chart, intraday_1h) -> tup
     return score, daily_ratio, expected_ratio, intraday_ratio, momentum_bucket, reasons, risks
 
 
+# NOT (2026-09-09, RSI esik dogrulamasi): BIST100 evreninde ~3 yillik gunluk
+# veri uzerinde (N=24.816 gun) bu RSI bantlarinin 10-gunluk ileri getiriyi
+# gercekten ongorup ongormedigi test edildi. Sonuc: hicbir bant, kosulsuz
+# tabana (tum gunler, ort. %1.035) gore anlamli buyuklukte bir fark
+# gostermedi - farklar hep %0.1-0.3 puan araliginda kaldi, BIST'in normal
+# 10-gunluk oynakligina (%8-12) gore gurultu seviyesinde. Uzerinde durulmasi
+# gereken bir nokta: "zayif" bant (RSI<42, burada NEGATIF sayiliyor) ort.
+# %1.239 getiri gosterdi - "guclu_pozitif" bandindan (RSI 55-68/69/70,
+# burada POZITIF sayiliyor, ort. %0.950) DAHA YUKSEK. Bu test piyasa geneli
+# trendini ayiklamadigi (donem geneli pozitifti) ve anlamlilik testi
+# icermedigi icin kesin degil - agirliklari degistirmedik, ama RSI'nin
+# burada tasidigi guvenin (kategori agirligi 1.0) gercekte hak edilenden
+# fazla olabilecegini bilerek kullanin.
 def _technical_pressure_component(daily_chart, intraday_1h, intraday_4h) -> tuple[float, list[str], list[str]]:
     reasons: list[str] = []
     risks: list[str] = []

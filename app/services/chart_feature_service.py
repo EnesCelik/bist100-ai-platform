@@ -237,6 +237,10 @@ def _build_dataframe_from_ohlcv(ticker: str, timeframe: str = "1G", as_of_timest
 
 
 
+# NOT: Bu RSI'nin skorlamada kullanilan esik bantlarinin (55-68 pozitif,
+# <42/>=72 negatif vb.) BIST100'de gercek ongoru gucu tasiyip tasimadigi
+# test edildi, sonuc ve caveat'lar icin bkz. market_scan_service.py
+# _technical_pressure_component() ustundeki not (2026-09-09).
 def _compute_rsi(close: pd.Series, period: int = 14) -> float:
     delta = close.diff()
     gains = delta.clip(lower=0)
