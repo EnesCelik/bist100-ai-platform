@@ -36,6 +36,7 @@ from app.models.schemas import (
 from app.services.ask_service import _build_analysis_answer, _calculate_analysis_confidence
 from app.services.chart_feature_service import get_chart_feature_summary
 from app.services.event_service import get_event_summary
+from app.services.system_accuracy_service import get_confidence_adjustment
 from app.services.fundamental_service import get_fundamental_summary
 from app.services.institutional_flow_service import get_institutional_flow_summary
 from app.services.macro_event_service import get_macro_event_summary
@@ -877,7 +878,14 @@ def _build_opportunity_item(company) -> OpportunityScanItem | None:
 
     reasons = list(dict.fromkeys(scenario_reasons + volume_reasons + technical_reasons + liquidity_reasons + book_reasons + fundamental_reasons))[:7]
     risks = list(dict.fromkeys(scenario_risks + volume_risks + technical_risks + liquidity_risks + book_risks + fundamental_risks))[:7]
-    confidence = _clamp(0.35 + (score / 100.0 * 0.45) + (0.1 if expected_volume_ratio and expected_volume_ratio >= 1.0 else 0.0), 0.25, 0.86)
+    # scan_market/ask_service tarafinin aksine bu tarayici kendi ayri confidence
+    # formulunu kullaniyordu, bu yuzden gercek gecmis basari oranindan (system_accuracy_service)
+    # hic etkilenmiyordu - ayni ayari burada da uyguluyoruz.
+    confidence = _clamp(
+        0.35 + (score / 100.0 * 0.45) + (0.1 if expected_volume_ratio and expected_volume_ratio >= 1.0 else 0.0) + get_confidence_adjustment(),
+        0.25,
+        0.86,
+    )
 
     return OpportunityScanItem(
         ticker=company.ticker,
@@ -1021,13 +1029,14 @@ def _build_limit_up_candidate(company) -> tuple[LimitUpCandidateItem | None, boo
     technical_score, technical_reasons, technical_risks = _technical_pressure_component(daily_chart, intraday_1h, intraday_4h)
     liquidity_score, spread, order_proxy, liquidity_reasons, liquidity_risks = _liquidity_component(market_snapshot)
     book_score, book_pressure, book_imbalance, book_reasons, book_risks = _order_book_pressure_component(company.ticker)
+    fundamental_score, fundamental_reasons, fundamental_risks = _fundamental_pressure_component(company.ticker)
 
-    score = _clamp(28.0 + change_score + volume_score + technical_score + liquidity_score + book_score, 0.0, 100.0)
+    score = _clamp(28.0 + change_score + volume_score + technical_score + liquidity_score + book_score + fundamental_score, 0.0, 100.0)
     if score < 42:
         return None, False
 
-    reasons = list(dict.fromkeys(change_reasons + volume_reasons + technical_reasons + liquidity_reasons + book_reasons))[:5]
-    risks = list(dict.fromkeys(change_risks + volume_risks + technical_risks + liquidity_risks + book_risks))[:5]
+    reasons = list(dict.fromkeys(change_reasons + volume_reasons + technical_reasons + liquidity_reasons + book_reasons + fundamental_reasons))[:5]
+    risks = list(dict.fromkeys(change_risks + volume_risks + technical_risks + liquidity_risks + book_risks + fundamental_risks))[:5]
 
     return LimitUpCandidateItem(
         ticker=company.ticker,
@@ -1614,8 +1623,11 @@ def _score_live_momentum_item(company: CompanyResponse, universe_sources: list[s
         score += 6.0
         reasons.append("Satis kademesi bos; tavan kilidi ihtimali")
 
-    reasons.extend(volume_reasons + liquidity_reasons)
-    risks.extend(volume_risks + liquidity_risks)
+    fundamental_score, fundamental_reasons, fundamental_risks = _fundamental_pressure_component(company.ticker)
+    score += fundamental_score
+
+    reasons.extend(volume_reasons + liquidity_reasons + fundamental_reasons)
+    risks.extend(volume_risks + liquidity_risks + fundamental_risks)
     final_score = round(_clamp(score, 0.0, 100.0), 2)
 
     return LiveMomentumRadarItem(
@@ -1899,6 +1911,11 @@ def _score_pre_market_watchlist_item(company: CompanyResponse, universe_sources:
     score += macro_score
     reasons.extend(macro_reasons)
     risks.extend(macro_risks)
+
+    fundamental_score, fundamental_reasons, fundamental_risks = _fundamental_pressure_component(company.ticker)
+    score += fundamental_score
+    reasons.extend(fundamental_reasons)
+    risks.extend(fundamental_risks)
 
     final_score = round(_clamp(score, 0.0, 100.0), 2)
     if final_score < 42.0:
