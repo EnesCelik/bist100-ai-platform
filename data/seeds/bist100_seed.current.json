@@ -1,7 +1,7 @@
 {
   "universe_code": "bist100",
   "universe_name": "BIST 100",
-  "source": "public_components_curated_2026_04_22",
+  "source": "kap_official_sync_2026_09_09",
   "items": [
     {
       "ticker": "AEFES",
@@ -11,30 +11,9 @@
       "is_active": true
     },
     {
-      "ticker": "AGHOL",
-      "name": "Anadolu Grubu Holding",
-      "sector": "Conglomerates",
-      "signal_enabled": false,
-      "is_active": true
-    },
-    {
       "ticker": "AKBNK",
       "name": "Akbank",
       "sector": "Banking",
-      "signal_enabled": false,
-      "is_active": true
-    },
-    {
-      "ticker": "AKENR",
-      "name": "Akenerji",
-      "sector": "Utilities",
-      "signal_enabled": false,
-      "is_active": true
-    },
-    {
-      "ticker": "AKGRT",
-      "name": "Aksigorta",
-      "sector": "Insurance",
       "signal_enabled": false,
       "is_active": true
     },
@@ -56,6 +35,13 @@
       "ticker": "ALARK",
       "name": "Alarko Holding",
       "sector": "Industrials",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ALTNY",
+      "name": "Altınay Savunma Teknolojileri",
+      "sector": "Technology",
       "signal_enabled": false,
       "is_active": true
     },
@@ -88,9 +74,16 @@
       "is_active": true
     },
     {
-      "ticker": "AYGAZ",
-      "name": "Aygaz",
-      "sector": "Energy",
+      "ticker": "BALSU",
+      "name": "Balsu Gıda Sanayi Ve Ticaret",
+      "sector": "Manufacturing",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "BERA",
+      "name": "Bera Holding",
+      "sector": "Financial Services",
       "signal_enabled": false,
       "is_active": true
     },
@@ -102,23 +95,30 @@
       "is_active": true
     },
     {
-      "ticker": "BJKAS",
-      "name": "Besiktas Futbol Yat.",
-      "sector": "Sports",
-      "signal_enabled": false,
-      "is_active": true
-    },
-    {
-      "ticker": "BRISA",
-      "name": "Brisa",
-      "sector": "Automotive",
-      "signal_enabled": false,
-      "is_active": true
-    },
-    {
       "ticker": "BRSAN",
       "name": "Borusan Mannesmann",
       "sector": "Industrials",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "BRYAT",
+      "name": "Borusan Yatırım Ve Pazarlama",
+      "sector": "Financial Services",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "BSOKE",
+      "name": "Batıçim Çimento Sanayi",
+      "sector": "Manufacturing",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "BTCIM",
+      "name": "Batıçim Batı Anadolu Sanayi Ve Ticaret",
+      "sector": "Manufacturing",
       "signal_enabled": false,
       "is_active": true
     },
@@ -144,9 +144,23 @@
       "is_active": true
     },
     {
-      "ticker": "DEVA",
-      "name": "Deva Holding",
-      "sector": "Healthcare",
+      "ticker": "CVKMD",
+      "name": "Cvk Maden İşletmeleri Sanayi Ve Ticaret",
+      "sector": "Mining",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "CWENE",
+      "name": "Cw Enerji Mühendislik Ticaret Ve Sanayi",
+      "sector": "Energy",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "DAPGM",
+      "name": "Dap Gayrimenkul Geliştirme",
+      "sector": "Construction",
       "signal_enabled": false,
       "is_active": true
     },
@@ -165,9 +179,37 @@
       "is_active": true
     },
     {
+      "ticker": "DSTKF",
+      "name": "Destek Finans Faktoring",
+      "sector": "Financial Services",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ECILC",
+      "name": "Eis Eczacıbaşı İlaç Sınai Ve Finansal Yatırımlar Sanayi Ve Ticaret",
+      "sector": "Financial Services",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "EFOR",
+      "name": "Efor Yatırım Sanayi Ticaret",
+      "sector": "Manufacturing",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
       "ticker": "EKGYO",
       "name": "Emlak Konut GYO",
       "sector": "Real Estate",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ENERY",
+      "name": "Enerya Enerji",
+      "sector": "Energy",
       "signal_enabled": false,
       "is_active": true
     },
@@ -189,6 +231,34 @@
       "ticker": "EREGL",
       "name": "Eregli Demir Celik",
       "sector": "Steel",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ESEN",
+      "name": "Esenboğa Elektrik Üretim",
+      "sector": "Energy",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "EUPWR",
+      "name": "Europower Enerji Ve Otomasyon Teknolojileri Sanayi Ticaret",
+      "sector": "Manufacturing",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "EUREN",
+      "name": "Europen Endüstri İnşaat Sanayi Ve Ticaret",
+      "sector": "Manufacturing",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "FENER",
+      "name": "Fenerbahçe Futbol",
+      "sector": "Sports",
       "signal_enabled": false,
       "is_active": true
     },
@@ -221,16 +291,30 @@
       "is_active": true
     },
     {
-      "ticker": "GLYHO",
-      "name": "Global Yatirim Holding",
-      "sector": "Holding",
+      "ticker": "GLRMK",
+      "name": "Gülermak Ağır Sanayi İnşaat Ve Taahhüt",
+      "sector": "Construction",
       "signal_enabled": false,
       "is_active": true
     },
     {
-      "ticker": "GOZDE",
-      "name": "Gozde Girisim",
-      "sector": "Investment",
+      "ticker": "GRSEL",
+      "name": "Gür-sel Turizm Taşımacılık Ve Servis Ticaret",
+      "sector": "Transportation",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "GRTHO",
+      "name": "Grainturk Holding",
+      "sector": "Financial Services",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "GSRAY",
+      "name": "Galatasaray Sportif Sınai Ve Ticari Yatırımlar",
+      "sector": "Sports",
       "signal_enabled": false,
       "is_active": true
     },
@@ -256,16 +340,9 @@
       "is_active": true
     },
     {
-      "ticker": "ICBCT",
-      "name": "ICBC Turkey Bank",
-      "sector": "Banking",
-      "signal_enabled": false,
-      "is_active": true
-    },
-    {
-      "ticker": "IPEKE",
-      "name": "Ipek Dogal Enerji",
-      "sector": "Mining",
+      "ticker": "IEYHO",
+      "name": "Işıklar Enerji Ve Yapı Holding",
+      "sector": "Financial Services",
       "signal_enabled": false,
       "is_active": true
     },
@@ -277,30 +354,16 @@
       "is_active": true
     },
     {
-      "ticker": "ISFIN",
-      "name": "Is Finansal Kiralama",
+      "ticker": "ISMEN",
+      "name": "İş Yatırım Menkul Değerler",
       "sector": "Financial Services",
       "signal_enabled": false,
       "is_active": true
     },
     {
-      "ticker": "ISGYO",
-      "name": "Is GYO",
-      "sector": "Real Estate",
-      "signal_enabled": false,
-      "is_active": true
-    },
-    {
-      "ticker": "IZMDC",
-      "name": "Izmir Demir Celik",
-      "sector": "Steel",
-      "signal_enabled": false,
-      "is_active": true
-    },
-    {
-      "ticker": "KARSN",
-      "name": "Karsan",
-      "sector": "Automotive",
+      "ticker": "IZENR",
+      "name": "İzdemir Enerji Elektrik Üretim",
+      "sector": "Energy",
       "signal_enabled": false,
       "is_active": true
     },
@@ -312,30 +375,9 @@
       "is_active": true
     },
     {
-      "ticker": "KLGYO",
-      "name": "Kiler GYO",
-      "sector": "Real Estate",
-      "signal_enabled": false,
-      "is_active": true
-    },
-    {
-      "ticker": "KONTR",
-      "name": "Kontrolmatik",
-      "sector": "Technology",
-      "signal_enabled": false,
-      "is_active": true
-    },
-    {
-      "ticker": "KOZAA",
-      "name": "Koza Anadolu Metal",
-      "sector": "Mining",
-      "signal_enabled": false,
-      "is_active": true
-    },
-    {
-      "ticker": "KOZAL",
-      "name": "Koza Altin",
-      "sector": "Mining",
+      "ticker": "KLRHO",
+      "name": "Kiler Holding",
+      "sector": "Financial Services",
       "signal_enabled": false,
       "is_active": true
     },
@@ -347,6 +389,20 @@
       "is_active": true
     },
     {
+      "ticker": "KTLEV",
+      "name": "Katılımevim Tasarruf Finansman",
+      "sector": "Financial Services",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "KUYAS",
+      "name": "Kuyaş Yatırım",
+      "sector": "Construction",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
       "ticker": "MAGEN",
       "name": "Margun Enerji",
       "sector": "Utilities",
@@ -354,9 +410,9 @@
       "is_active": true
     },
     {
-      "ticker": "MANAS",
-      "name": "Manas Enerji Yonetimi",
-      "sector": "Technology",
+      "ticker": "MAVI",
+      "name": "Mavi Giyim Sanayi Ve Ticaret",
+      "sector": "Retail",
       "signal_enabled": false,
       "is_active": true
     },
@@ -382,9 +438,23 @@
       "is_active": true
     },
     {
-      "ticker": "NTHOL",
-      "name": "Net Holding",
-      "sector": "Holding",
+      "ticker": "OBAMS",
+      "name": "Oba Makarnacılık Sanayi Ve Ticaret",
+      "sector": "Manufacturing",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ODAS",
+      "name": "Odaş Elektrik Üretim Sanayi Ticaret",
+      "sector": "Energy",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "ODINE",
+      "name": "Odine Solutions Teknoloji Ticaret Ve Sanayi",
+      "sector": "Technology",
       "signal_enabled": false,
       "is_active": true
     },
@@ -392,6 +462,34 @@
       "ticker": "OTKAR",
       "name": "Otokar",
       "sector": "Defense",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "OYAKC",
+      "name": "Oyak Çimento Fabrikaları",
+      "sector": "Manufacturing",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "PAHOL",
+      "name": "Pasifik Holding",
+      "sector": "Financial Services",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "PASEU",
+      "name": "Pasifik Eurasia Lojistik Dış Ticaret",
+      "sector": "Transportation",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "PATEK",
+      "name": "Pasifik Teknoloji",
+      "sector": "Technology",
       "signal_enabled": false,
       "is_active": true
     },
@@ -424,9 +522,30 @@
       "is_active": true
     },
     {
+      "ticker": "RALYH",
+      "name": "Ral Yatırım Holding",
+      "sector": "Financial Services",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "REEDR",
+      "name": "Reeder Teknoloji Sanayi Ve Ticaret",
+      "sector": "Technology",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
       "ticker": "SAHOL",
       "name": "Sabanci Holding",
       "sector": "Conglomerates",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "SARKY",
+      "name": "Sarkuysan Elektrolitik Bakır Sanayi Ve Ticaret",
+      "sector": "Manufacturing",
       "signal_enabled": false,
       "is_active": true
     },
@@ -448,13 +567,6 @@
       "ticker": "SKBNK",
       "name": "Sekerbank",
       "sector": "Banking",
-      "signal_enabled": false,
-      "is_active": true
-    },
-    {
-      "ticker": "SNGYO",
-      "name": "Sinpas GYO",
-      "sector": "Real Estate",
       "signal_enabled": false,
       "is_active": true
     },
@@ -501,16 +613,23 @@
       "is_active": true
     },
     {
-      "ticker": "TRCAS",
-      "name": "Turcas Petrol",
-      "sector": "Energy",
+      "ticker": "TRALT",
+      "name": "Türk Altın İşletmeleri",
+      "sector": "Mining",
       "signal_enabled": false,
       "is_active": true
     },
     {
-      "ticker": "TRGYO",
-      "name": "Torunlar GYO",
-      "sector": "Real Estate",
+      "ticker": "TRENJ",
+      "name": "Tr Doğal Enerji Kaynakları Araştırma Ve Üretim",
+      "sector": "Mining",
+      "signal_enabled": false,
+      "is_active": true
+    },
+    {
+      "ticker": "TRMET",
+      "name": "Tr Anadolu Metal Madencilik İşletmeleri",
+      "sector": "Mining",
       "signal_enabled": false,
       "is_active": true
     },
@@ -522,23 +641,9 @@
       "is_active": true
     },
     {
-      "ticker": "TSPOR",
-      "name": "Trabzonspor Sportif",
-      "sector": "Sports",
-      "signal_enabled": false,
-      "is_active": true
-    },
-    {
       "ticker": "TTKOM",
       "name": "Turk Telekom",
       "sector": "Telecom",
-      "signal_enabled": false,
-      "is_active": true
-    },
-    {
-      "ticker": "TTRAK",
-      "name": "Turk Traktor",
-      "sector": "Machinery",
       "signal_enabled": false,
       "is_active": true
     },
