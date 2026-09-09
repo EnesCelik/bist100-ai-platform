@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Query
 
-from app.models.schemas import PaperDecisionLogCreateResponse, PaperDecisionLogHistoryResponse, PaperDecisionOutcomeHistoryResponse, PaperDecisionOutcomeResponse, PaperDecisionPerformanceSummaryResponse, PaperDecisionResolvedPerformanceSummaryResponse
-from app.services.paper_decision_log_service import evaluate_paper_decision_outcome, get_paper_decision_history, get_paper_decision_outcomes, get_paper_decision_performance_summary, get_paper_decision_resolved_performance_summary, save_paper_decision_for_ticker, save_paper_decision_from_scan
+from app.models.schemas import CalibrationValidationResponse, PaperDecisionLogCreateResponse, PaperDecisionLogHistoryResponse, PaperDecisionOutcomeHistoryResponse, PaperDecisionOutcomeResponse, PaperDecisionPerformanceSummaryResponse, PaperDecisionResolvedPerformanceSummaryResponse
+from app.services.paper_decision_log_service import evaluate_paper_decision_outcome, get_calibration_validation_report, get_paper_decision_history, get_paper_decision_outcomes, get_paper_decision_performance_summary, get_paper_decision_resolved_performance_summary, save_paper_decision_for_ticker, save_paper_decision_from_scan
 
 
 router = APIRouter(tags=["paper-decision-log"])
@@ -60,6 +60,14 @@ def get_paper_decision_resolved_summary(
     horizon_bars: int = Query(default=10, ge=1, le=60),
 ) -> PaperDecisionResolvedPerformanceSummaryResponse:
     return get_paper_decision_resolved_performance_summary(limit=limit, ticker=ticker, source_mode=source_mode, batch_id=batch_id, timeframe=timeframe, horizon_bars=horizon_bars)
+
+
+@router.get("/evaluation/paper-log/calibration-validation", response_model=CalibrationValidationResponse)
+def get_calibration_validation(
+    limit: int = Query(default=1000, ge=1, le=5000),
+    horizon_bars: int = Query(default=10, ge=1, le=60),
+) -> CalibrationValidationResponse:
+    return get_calibration_validation_report(limit=limit, horizon_bars=horizon_bars)
 
 
 @router.get("/evaluation/paper-log/outcomes", response_model=PaperDecisionOutcomeHistoryResponse)

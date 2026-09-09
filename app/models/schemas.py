@@ -1212,6 +1212,23 @@ class PaperDecisionPerformanceSummaryResponse(BaseModel):
     summary: str = Field(description="Human-readable performance summary")
 
 
+class CalibrationBiasBreakdown(BaseModel):
+    calibration_bias: str = Field(description="Replay calibration bias label recorded at decision time", examples=["supportive"])
+    decided_count: int = Field(description="Decided (win/loss/mixed) outcome count for this bias group", examples=[42])
+    win_count: int = Field(description="Win outcomes in this bias group", examples=[20])
+    loss_count: int = Field(description="Loss outcomes in this bias group", examples=[15])
+    mixed_count: int = Field(description="Mixed outcomes in this bias group", examples=[7])
+    win_rate: float | None = Field(default=None, description="Win share among decided outcomes in this bias group")
+    average_close_return_percent: float | None = Field(default=None, description="Average close return among decided outcomes in this bias group")
+
+
+class CalibrationValidationResponse(BaseModel):
+    total_logs: int = Field(description="Number of decision logs with a recorded calibration_bias", examples=[500])
+    evaluated_count: int = Field(description="Number of those logs with an evaluated outcome", examples=[420])
+    breakdown: list[CalibrationBiasBreakdown] = Field(description="Real outcome breakdown per calibration_bias label")
+    summary: str = Field(description="Short human-readable summary of the breakdown")
+
+
 class PaperDecisionResolvedPerformanceSummaryResponse(BaseModel):
     timeframe: str = Field(description="Evaluation timeframe", examples=["1G"])
     batch_id: str | None = Field(default=None, description="Batch identifier filter applied to the resolved summary")

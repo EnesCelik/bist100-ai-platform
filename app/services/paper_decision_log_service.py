@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from app.db.models import PaperDecisionLog
 from app.db.session import SessionLocal, ensure_runtime_schema
-from app.models.schemas import MarketScanItem, PaperDecisionLogCreateResponse, PaperDecisionLogHistoryResponse, PaperDecisionLogItem, PaperDecisionOutcomeHistoryResponse, PaperDecisionOutcomeResponse, PaperDecisionPerformanceSummaryResponse, PaperDecisionResolvedPerformanceSummaryResponse
+from app.models.schemas import CalibrationBiasBreakdown, CalibrationValidationResponse, MarketScanItem, PaperDecisionLogCreateResponse, PaperDecisionLogHistoryResponse, PaperDecisionLogItem, PaperDecisionOutcomeHistoryResponse, PaperDecisionOutcomeResponse, PaperDecisionPerformanceSummaryResponse, PaperDecisionResolvedPerformanceSummaryResponse
 from app.services.ask_service import build_analysis_response_for_ticker
 from app.services.chart_feature_service import get_chart_feature_summary
 from app.data_sources.market_data.provider import get_market_snapshot
@@ -580,5 +580,64 @@ def get_paper_decision_resolved_performance_summary(limit: int = 500, ticker: st
         best_close_return_percent=best_close_return_percent,
         worst_ticker=worst_ticker,
         worst_close_return_percent=worst_close_return_percent,
+        summary=summary,
+    )
+
+
+def get_calibration_validation_report(limit: int = 1000, horizon_bars: int = 10) -> CalibrationValidationResponse:
+    """Replay kalibrasyonunun "supportive"/"fragile"/"mixed" etiketinin
+    GERCEKTEN daha iyi/kotu sonuc verip vermedigini, karar gunlugunun
+    (tum evrende, tek hisseye ozel degil) gercek cozulmus sonuclariyla
+    capraz dogrular. trade_calibration kanit kategorisi derive_recommendation'da
+    1.35 agirlik tasiyor - bu agirligin gercekten hak edilip edilmedigine
+    dair ilk elden, dogrudan kanit budur."""
+    ensure_runtime_schema()
+    with SessionLocal() as session:
+        rows = (
+            session.query(PaperDecisionLog)
+            .filter(PaperDecisionLog.calibration_bias.isnot(None))
+            .order_by(PaperDecisionLog.created_at.desc())
+            .limit(max(limit, 1))
+            .all()
+        )
+
+    dataframe_cache: dict[tuple[str, str], pd.DataFrame] = {}
+    groups: dict[str, list[PaperDecisionOutcomeResponse]] = {}
+    for row in rows:
+        outcome = _build_paper_outcome(row, timeframe="1G", horizon_bars=horizon_bars, dataframe_cache=dataframe_cache)
+        groups.setdefault(row.calibration_bias, []).append(outcome)
+
+    breakdown: list[CalibrationBiasBreakdown] = []
+    for bias, outcomes in groups.items():
+        decided = [item for item in outcomes if item.outcome_label in ("win", "loss", "mixed")]
+        win_count = sum(1 for item in decided if item.outcome_label == "win")
+        loss_count = sum(1 for item in decided if item.outcome_label == "loss")
+        mixed_count = sum(1 for item in decided if item.outcome_label == "mixed")
+        decided_count = len(decided)
+        win_rate = round(win_count / decided_count, 2) if decided_count else None
+        returns = [item.close_return_percent for item in decided if item.close_return_percent is not None]
+        average_close_return_percent = round(sum(returns) / len(returns), 2) if returns else None
+        breakdown.append(
+            CalibrationBiasBreakdown(
+                calibration_bias=bias,
+                decided_count=decided_count,
+                win_count=win_count,
+                loss_count=loss_count,
+                mixed_count=mixed_count,
+                win_rate=win_rate,
+                average_close_return_percent=average_close_return_percent,
+            )
+        )
+
+    breakdown.sort(key=lambda item: item.decided_count, reverse=True)
+    summary = (
+        "; ".join(f"{item.calibration_bias}: win_rate={item.win_rate} (n={item.decided_count})" for item in breakdown)
+        or "Yeterli karara-baglanmis kayit yok."
+    )
+
+    return CalibrationValidationResponse(
+        total_logs=len(rows),
+        evaluated_count=sum(len(items) for items in groups.values()),
+        breakdown=breakdown,
         summary=summary,
     )
