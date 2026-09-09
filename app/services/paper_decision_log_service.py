@@ -106,6 +106,7 @@ def _create_log_row(ticker: str, question: str, source_mode: str) -> PaperDecisi
         stop_loss_level=chart.stop_loss_level if chart is not None else None,
         take_profit_level=chart.take_profit_level if chart is not None else None,
         calibration_bias=calibration.calibration_bias if calibration is not None else None,
+        calibration_score=calibration.calibration_score if calibration is not None else None,
         recommendation_summary=analysis.recommendation.summary,
         used_sources=analysis.used_sources,
     )
@@ -139,6 +140,7 @@ def _create_log_row_from_scan_item(item: MarketScanItem, batch_id: str | None = 
         stop_loss_level=chart.stop_loss_level if chart is not None else None,
         take_profit_level=chart.take_profit_level if chart is not None else None,
         calibration_bias=calibration.calibration_bias if calibration is not None else None,
+        calibration_score=calibration.calibration_score if calibration is not None else None,
         recommendation_summary=item.summary,
         used_sources=item.used_sources,
     )

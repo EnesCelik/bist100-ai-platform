@@ -140,6 +140,7 @@ class PaperDecisionLog(Base):
     stop_loss_level: Mapped[float | None] = mapped_column(nullable=True)
     take_profit_level: Mapped[float | None] = mapped_column(nullable=True)
     calibration_bias: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    calibration_score: Mapped[float | None] = mapped_column(nullable=True)
     recommendation_summary: Mapped[str] = mapped_column(Text)
     used_sources: Mapped[list[str]] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)

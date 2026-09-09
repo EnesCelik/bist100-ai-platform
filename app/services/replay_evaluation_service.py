@@ -60,11 +60,15 @@ def build_trade_calibration_signals(calibration: ReplayCalibrationResponse | Non
         return positives, negatives
 
     if calibration.calibration_bias == "fragile":
+        # NOT: Karar gunlugunun gercek sonuclarina karsi capraz dogrulandi
+        # (bkz. get_calibration_validation_report) - "fragile" etiketli 57
+        # kararin gercek kazanma orani (%51) "mixed" ile ayni cikti (%51),
+        # "supportive"in (%60) cok altinda ama "mixed"ten farksiz. Bu yuzden
+        # onceden burada uretilen 2 ek kosullu negatif kanit maddesi
+        # (compounding) kaldirildi - gercek veri onlari desteklemiyordu ve
+        # her biri ayri ayri 1.35 agirlikla sayildigi icin fragile'i,
+        # gercekte hak ettiginden cok daha fazla cezalandiriyordu.
         negatives.append("Replay kalibrasyonu teknik seviyelerin son donemde kirilgan calistigini gosteriyor")
-        if calibration.stop_loss_rate >= calibration.take_profit_rate:
-            negatives.append("Stop-loss orani take-profit oraninin uzerinde kalarak teknik setup guvenini zayiflatiyor")
-        if calibration.positive_close_rate <= 0.45 or calibration.average_close_return_percent < 0:
-            negatives.append("Pozitif kapanis kalitesi zayif kalarak ortalama getiriyi baski altinda birakiyor")
         return positives, negatives
 
     negatives.append("Replay kalibrasyonu teknik seviye performansinin karisik kaldigini gosteriyor")
@@ -279,6 +283,7 @@ def evaluate_trade_calibration(
         average_close_return_percent=average_close_return_percent,
         average_max_upside_percent=average_max_upside_percent,
         average_max_drawdown_percent=average_max_drawdown_percent,
+        calibration_score=round(calibration_score, 3),
         calibration_bias=calibration_bias,
         calibration_summary=calibration_summary,
     )

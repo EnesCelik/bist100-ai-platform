@@ -168,6 +168,11 @@ def ensure_runtime_schema() -> None:
                     "CREATE INDEX IF NOT EXISTS ix_trading_agent_decision_logs_phase ON trading_agent_decision_logs (phase)"
                 )
             )
+            connection.execute(
+                text(
+                    "ALTER TABLE paper_decision_logs ADD COLUMN IF NOT EXISTS calibration_score FLOAT"
+                )
+            )
 
         _schema_initialized = True
 

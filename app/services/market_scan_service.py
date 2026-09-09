@@ -254,13 +254,15 @@ def _trade_calibration_rank_component(trade_calibration) -> float:
         elif trade_calibration.positive_close_rate >= 0.75:
             component += 0.25
     elif trade_calibration.calibration_bias == "fragile":
-        component -= 1.35
-        if trade_calibration.stop_loss_rate >= trade_calibration.take_profit_rate:
-            component -= 0.4
-        if trade_calibration.average_close_return_percent < 0:
-            component -= 0.35
-        if trade_calibration.positive_close_rate <= 0.45:
-            component -= 0.25
+        # NOT: Gercek karar gunlugu sonuclariyla capraz dogrulandi (bkz.
+        # get_calibration_validation_report) - "fragile" etiketinin gercek
+        # kazanma orani "mixed" ile ayniydi (ikisi de %51), "supportive"in
+        # (%60) altinda ama daha kotu degildi. Onceden burasi -1.35 ile
+        # -2.35 arasinda, supportive'in +1.0/+1.45'inden DAHA BUYUK bir
+        # ceza veriyordu - gercek veri bunu desteklemiyordu. Artik "mixed"
+        # dalindaki en kotu senaryoyla (-0.65) ayni buyuklukte, kanitla
+        # tutarli, mutedis bir ceza uyguluyor.
+        component -= 0.65
     else:
         if trade_calibration.average_close_return_percent <= 0:
             component -= 0.45

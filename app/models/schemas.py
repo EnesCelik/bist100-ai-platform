@@ -1063,6 +1063,7 @@ class ReplayCalibrationResponse(BaseModel):
     average_close_return_percent: float = Field(description="Average close return across samples", examples=[2.18])
     average_max_upside_percent: float = Field(description="Average maximum upside excursion across samples", examples=[4.86])
     average_max_drawdown_percent: float = Field(description="Average maximum drawdown across samples", examples=[-2.11])
+    calibration_score: float = Field(description="Raw continuous calibration score before bucketing into a bias label", examples=[0.94])
     calibration_bias: str = Field(description="Directional calibration label derived from replay samples", examples=["supportive"])
     calibration_summary: str = Field(description="Short summary of replay calibration quality")
 
