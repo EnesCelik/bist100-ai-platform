@@ -21,9 +21,16 @@ from app.models.schemas import (
 )
 
 PRE_OPEN_SOURCE_NAME = "matriks_pre_open_equilibrium"
-# Net dengesizlik, teorik eslesme hacminin bu yuzdesini asarsa "guclu" sayilir.
+# Net dengesizlik, TOPLAM ilginin (eslesen + kalan alis + kalan satis) bu
+# yuzdesini asarsa "guclu" sayilir.
 _STRONG_THRESHOLD_PERCENT = 50.0
 _MODERATE_THRESHOLD_PERCENT = 15.0
+# Tarama siralamasinda, toplam ilgisi bu lot sayisinin altinda kalan
+# hisseler eleniyor - cok ince (illikit) isimlerde eslesen hacim neredeyse
+# sifira yakin oldugu icin yuzde hesaplari anlamsizca sismekte/patlamaktaydi
+# (bkz. 2026-09-09 canli test: MANAS'ta -%328.878 gibi imkansiz bir deger
+# cikmisti). Bu esik, "en azindan gercek bir ilgi var" bar'i.
+_MIN_TOTAL_INTEREST_FOR_RANKING = 1000
 
 
 def _pressure_bucket(imbalance_percent: float | None) -> str:
@@ -49,6 +56,7 @@ def _unavailable(ticker: str, message: str) -> PreOpenImbalanceResponse:
         remaining_bid_quantity=None,
         remaining_ask_quantity=None,
         net_imbalance_quantity=None,
+        total_interest_quantity=None,
         imbalance_percent=None,
         pressure_bucket="unavailable",
         source=PRE_OPEN_SOURCE_NAME,
@@ -69,8 +77,15 @@ def get_pre_open_imbalance(ticker: str) -> PreOpenImbalanceResponse:
     remaining_ask = data["remaining_ask_quantity"] or 0
     equilibrium_quantity = data["equilibrium_quantity"] or 0
     net_imbalance = remaining_bid - remaining_ask
+    # Payda olarak SADECE eslesen hacim (equilibrium_quantity) degil, TOPLAM
+    # ilgiyi (eslesen + kalan alis + kalan satis) kullaniyoruz. Boylece
+    # eslesen hacim neredeyse sifira yakin oldugunda (ince/illikit isimler)
+    # yuzde anlamsizca patlamiyor - bu tasarimla |net_imbalance| her zaman
+    # total_interest'ten kucuk veya esit oldugu icin sonuc matematiksel
+    # olarak [-100, 100] araliginda kalmaya garantili.
+    total_interest = equilibrium_quantity + remaining_bid + remaining_ask
     imbalance_percent = (
-        round(net_imbalance / equilibrium_quantity * 100, 1) if equilibrium_quantity > 0 else None
+        round(net_imbalance / total_interest * 100, 1) if total_interest > 0 else None
     )
 
     return PreOpenImbalanceResponse(
@@ -81,6 +96,7 @@ def get_pre_open_imbalance(ticker: str) -> PreOpenImbalanceResponse:
         remaining_bid_quantity=remaining_bid,
         remaining_ask_quantity=remaining_ask,
         net_imbalance_quantity=net_imbalance,
+        total_interest_quantity=total_interest,
         imbalance_percent=imbalance_percent,
         pressure_bucket=_pressure_bucket(imbalance_percent),
         source=PRE_OPEN_SOURCE_NAME,
@@ -96,6 +112,11 @@ def scan_pre_open_imbalance(limit: int = 10, universe_code: str = "bist100") -> 
         result = get_pre_open_imbalance(company.ticker)
         if not result.available:
             continue
+        # Ince/illikit isimleri siralamadan eliyoruz - toplam ilgisi cok
+        # kucukse (orn. sadece bir kac yuz lot), yuzde hesabi guvenilir
+        # bir sinyal degildir, sadece gurultudur.
+        if (result.total_interest_quantity or 0) < _MIN_TOTAL_INTEREST_FOR_RANKING:
+            continue
         items.append(
             PreOpenImbalanceScanItem(
                 ticker=result.ticker,
@@ -105,6 +126,7 @@ def scan_pre_open_imbalance(limit: int = 10, universe_code: str = "bist100") -> 
                 equilibrium_quantity=result.equilibrium_quantity,
                 remaining_bid_quantity=result.remaining_bid_quantity or 0,
                 remaining_ask_quantity=result.remaining_ask_quantity or 0,
+                total_interest_quantity=result.total_interest_quantity or 0,
                 imbalance_percent=result.imbalance_percent,
                 pressure_bucket=result.pressure_bucket,
             )

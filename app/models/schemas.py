@@ -238,7 +238,8 @@ class PreOpenImbalanceResponse(BaseModel):
     remaining_bid_quantity: int | None = Field(default=None, description="Unmatched excess buy quantity at the equilibrium price")
     remaining_ask_quantity: int | None = Field(default=None, description="Unmatched excess sell quantity at the equilibrium price")
     net_imbalance_quantity: int | None = Field(default=None, description="remaining_bid_quantity minus remaining_ask_quantity")
-    imbalance_percent: float | None = Field(default=None, description="Net imbalance as a percent of equilibrium quantity")
+    total_interest_quantity: int | None = Field(default=None, description="equilibrium_quantity + remaining_bid_quantity + remaining_ask_quantity - the denominator imbalance_percent is computed against")
+    imbalance_percent: float | None = Field(default=None, description="Net imbalance as a percent of total interest (equilibrium + both remaining sides); mathematically bounded to [-100, 100]")
     pressure_bucket: str = Field(description="Pre-open pressure bucket", examples=["strong_buy_pressure"])
     source: str = Field(description="Data source", examples=["matriks_pre_open_equilibrium"])
     message: str | None = Field(default=None, description="Availability or parsing note")
@@ -252,7 +253,8 @@ class PreOpenImbalanceScanItem(BaseModel):
     equilibrium_quantity: int | None = Field(default=None, description="Theoretical pre-open matching quantity")
     remaining_bid_quantity: int = Field(description="Unmatched excess buy quantity at the equilibrium price")
     remaining_ask_quantity: int = Field(description="Unmatched excess sell quantity at the equilibrium price")
-    imbalance_percent: float | None = Field(default=None, description="Net imbalance as a percent of equilibrium quantity")
+    total_interest_quantity: int = Field(description="equilibrium_quantity + remaining_bid_quantity + remaining_ask_quantity, used as a liquidity/reliability gauge", examples=[125000])
+    imbalance_percent: float | None = Field(default=None, description="Net imbalance as a percent of total interest; bounded to [-100, 100]")
     pressure_bucket: str = Field(description="Pre-open pressure bucket", examples=["strong_buy_pressure"])
 
 
