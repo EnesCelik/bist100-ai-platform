@@ -16,4 +16,5 @@ data/macro_events/tcmb_rate_watch_state.json
 data/macro_events/tcmb_real_rate_watch_state.json
 data/trading_safety_state.json
 data/llm_traces.jsonl
+data/system_accuracy_state.json
 bist100_ai_platform.egg-info/

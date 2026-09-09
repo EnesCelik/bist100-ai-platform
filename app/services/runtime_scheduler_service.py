@@ -74,6 +74,10 @@ class SchedulerRuntimeState:
     last_kap_disclosure_watch_completed_at: str | None = None
     last_kap_disclosure_watch_status: str | None = None
     last_kap_disclosure_watch_message: str | None = None
+    last_system_accuracy_started_at: str | None = None
+    last_system_accuracy_completed_at: str | None = None
+    last_system_accuracy_status: str | None = None
+    last_system_accuracy_message: str | None = None
 
 
 _runtime_state = SchedulerRuntimeState()
@@ -200,6 +204,11 @@ def get_runtime_health() -> RuntimeHealthResponse:
         last_kap_disclosure_watch_completed_at=_runtime_state.last_kap_disclosure_watch_completed_at,
         last_kap_disclosure_watch_status=_runtime_state.last_kap_disclosure_watch_status,
         last_kap_disclosure_watch_message=_runtime_state.last_kap_disclosure_watch_message,
+        system_accuracy_enabled=settings.scheduler_enabled and settings.scheduler_system_accuracy_enabled,
+        last_system_accuracy_started_at=_runtime_state.last_system_accuracy_started_at,
+        last_system_accuracy_completed_at=_runtime_state.last_system_accuracy_completed_at,
+        last_system_accuracy_status=_runtime_state.last_system_accuracy_status,
+        last_system_accuracy_message=_runtime_state.last_system_accuracy_message,
     )
 
 
@@ -415,14 +424,14 @@ def _run_agent_intraday_telegram_once(slot: str) -> bool:
 _JOB_HARD_TIMEOUT_SECONDS = 180
 
 
-async def _run_with_timeout(func, job_name: str) -> None:
+async def _run_with_timeout(func, job_name: str, timeout_seconds: float = _JOB_HARD_TIMEOUT_SECONDS) -> None:
     try:
-        await asyncio.wait_for(asyncio.to_thread(func), timeout=_JOB_HARD_TIMEOUT_SECONDS)
+        await asyncio.wait_for(asyncio.to_thread(func), timeout=timeout_seconds)
     except TimeoutError:
         logger.error(
             "%s zaman asimina ugradi (%ss) - scheduler dongusu bu job'u birakip devam ediyor",
             job_name,
-            _JOB_HARD_TIMEOUT_SECONDS,
+            timeout_seconds,
         )
 
 
@@ -506,6 +515,25 @@ def _run_kap_disclosure_watch_once() -> None:
         logger.exception("KAP disclosure watch job hata verdi")
 
 
+def _run_system_accuracy_once() -> None:
+    from app.services.system_accuracy_service import refresh_system_accuracy_snapshot
+
+    _runtime_state.last_system_accuracy_started_at = _utc_now_iso()
+    _runtime_state.last_system_accuracy_status = "running"
+    try:
+        snapshot = refresh_system_accuracy_snapshot()
+        _runtime_state.last_system_accuracy_completed_at = _utc_now_iso()
+        _runtime_state.last_system_accuracy_status = "ok"
+        _runtime_state.last_system_accuracy_message = (
+            f"resolved_win_rate={snapshot.resolved_win_rate}, decided_count={snapshot.decided_count}"
+        )
+    except Exception as exc:  # noqa: BLE001
+        _runtime_state.last_system_accuracy_completed_at = _utc_now_iso()
+        _runtime_state.last_system_accuracy_status = "error"
+        _runtime_state.last_system_accuracy_message = str(exc)
+        logger.exception("System accuracy snapshot job hata verdi")
+
+
 def _time_reached(now_local: datetime, hour: int, minute: int) -> bool:
     return (now_local.hour, now_local.minute) >= (hour, minute)
 
@@ -552,10 +580,12 @@ async def _scheduler_loop() -> None:
     policy_rate_watch_interval = max(settings.scheduler_policy_rate_watch_interval_minutes, 1)
     real_rate_watch_interval = max(settings.scheduler_real_rate_watch_interval_minutes, 1)
     kap_disclosure_watch_interval = max(settings.scheduler_kap_disclosure_watch_interval_minutes, 1)
+    system_accuracy_interval = max(settings.scheduler_system_accuracy_interval_minutes, 1)
     next_token_refresh_at = datetime.utcnow()
     next_policy_rate_watch_at = datetime.utcnow()
     next_real_rate_watch_at = datetime.utcnow()
     next_kap_disclosure_watch_at = datetime.utcnow()
+    next_system_accuracy_at = datetime.utcnow()
     next_cleanup_at = datetime.utcnow()
     next_prefetch_at = datetime.utcnow() + timedelta(minutes=prefetch_initial_delay)
     next_paper_log_at = datetime.utcnow() + timedelta(minutes=paper_log_initial_delay)
@@ -585,6 +615,11 @@ async def _scheduler_loop() -> None:
         if settings.scheduler_kap_disclosure_watch_enabled and now >= next_kap_disclosure_watch_at:
             await _run_with_timeout(_run_kap_disclosure_watch_once, "kap_disclosure_watch")
             next_kap_disclosure_watch_at = datetime.utcnow() + timedelta(minutes=kap_disclosure_watch_interval)
+
+        if settings.scheduler_system_accuracy_enabled and now >= next_system_accuracy_at:
+            # Yuzlerce kayit icin OHLCV cekiyor, birkac dakika surebilir.
+            await _run_with_timeout(_run_system_accuracy_once, "system_accuracy", timeout_seconds=600)
+            next_system_accuracy_at = datetime.utcnow() + timedelta(minutes=system_accuracy_interval)
 
         if now >= next_cleanup_at:
             await asyncio.to_thread(_run_cleanup_once)

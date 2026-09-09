@@ -68,6 +68,11 @@ class RuntimeHealthResponse(BaseModel):
     last_kap_disclosure_watch_completed_at: str | None = Field(default=None, description="KAP disclosure watch job last completion time")
     last_kap_disclosure_watch_status: str | None = Field(default=None, description="KAP disclosure watch job last status")
     last_kap_disclosure_watch_message: str | None = Field(default=None, description="KAP disclosure watch job last summary message")
+    system_accuracy_enabled: bool = Field(default=False, description="Whether the system accuracy snapshot job is enabled")
+    last_system_accuracy_started_at: str | None = Field(default=None, description="System accuracy snapshot job last start time")
+    last_system_accuracy_completed_at: str | None = Field(default=None, description="System accuracy snapshot job last completion time")
+    last_system_accuracy_status: str | None = Field(default=None, description="System accuracy snapshot job last status")
+    last_system_accuracy_message: str | None = Field(default=None, description="System accuracy snapshot job last summary message")
 
 
 class DatabaseHealthResponse(BaseModel):

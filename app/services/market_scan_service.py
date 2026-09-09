@@ -474,6 +474,26 @@ def _liquidity_component(market_snapshot) -> tuple[float, float | None, str, lis
     return -2.0, spread, proxy, reasons, ["Derinlik verisi yok, emir akisi proxy ile sinirli"]
 
 
+def _fundamental_pressure_component(ticker: str) -> tuple[float, list[str], list[str]]:
+    """Fundamentals'i kisa vadeli firsat tarayicilarina da (opportunity/opening/
+    limit-up) destekleyici bir sinyal olarak ekler. Bilerek mutedis birakildi
+    (max +-10 puan, diger bilesenlerin ~yarisi civarinda) - bu tarayicilarin
+    odagi kisa vadeli teknik/hacim hareketi, temel guc sadece ek bir destek/
+    uyari katmani olmali, ana surucu olmamali. use_cache_only=True zorunlu:
+    aksi halde her hisse icin canli finansal tablo cekmeye calisir, tum
+    evreni tarayan bir dongude bu dakikalarca surer (bkz. daha once ayni
+    sebeple duzeltilen /scan/market 120s takilma bug'i)."""
+    summary = get_fundamental_summary(ticker, use_cache_only=True)
+    if summary is None:
+        return 0.0, [], []
+    positive_count = len(summary.positive_factors)
+    risk_count = len(summary.risk_factors)
+    score = _clamp(positive_count * 3.0 - risk_count * 3.5, -10.0, 10.0)
+    reasons = summary.positive_factors[:2]
+    risks = summary.risk_factors[:2]
+    return score, reasons, risks
+
+
 def _order_book_pressure_component(ticker: str) -> tuple[float, str | None, float | None, list[str], list[str]]:
     # Once canli WebSocket derinligini dener (Pay Duzey 2); veri yoksa
     # (abone olunmamis, akis kapali vb.) eski REST tabanli kaynaga duser.
@@ -832,6 +852,7 @@ def _build_opportunity_item(company) -> OpportunityScanItem | None:
     technical_score, technical_reasons, technical_risks = _technical_pressure_component(daily_chart, intraday_1h, intraday_4h)
     liquidity_score, spread, spread_proxy, liquidity_reasons, liquidity_risks = _liquidity_component(market_snapshot)
     book_score, book_pressure, book_imbalance, book_reasons, book_risks = _order_book_pressure_component(company.ticker)
+    fundamental_score, fundamental_reasons, fundamental_risks = _fundamental_pressure_component(company.ticker)
     scenario, scenario_reasons, scenario_risks, scenario_base = _scenario_from_components(
         market_snapshot,
         daily_chart,
@@ -841,7 +862,7 @@ def _build_opportunity_item(company) -> OpportunityScanItem | None:
         expected_volume_ratio,
     )
 
-    score = scenario_base + (volume_score * 0.42) + (technical_score * 0.35) + (liquidity_score * 0.55) + book_score
+    score = scenario_base + (volume_score * 0.42) + (technical_score * 0.35) + (liquidity_score * 0.55) + book_score + fundamental_score
     if scenario == "reversal_candidate":
         score = min(score, 76.0)
     if scenario == "avoid_or_invalidated":
@@ -854,8 +875,8 @@ def _build_opportunity_item(company) -> OpportunityScanItem | None:
     if score < 38:
         return None
 
-    reasons = list(dict.fromkeys(scenario_reasons + volume_reasons + technical_reasons + liquidity_reasons + book_reasons))[:7]
-    risks = list(dict.fromkeys(scenario_risks + volume_risks + technical_risks + liquidity_risks + book_risks))[:7]
+    reasons = list(dict.fromkeys(scenario_reasons + volume_reasons + technical_reasons + liquidity_reasons + book_reasons + fundamental_reasons))[:7]
+    risks = list(dict.fromkeys(scenario_risks + volume_risks + technical_risks + liquidity_risks + book_risks + fundamental_risks))[:7]
     confidence = _clamp(0.35 + (score / 100.0 * 0.45) + (0.1 if expected_volume_ratio and expected_volume_ratio >= 1.0 else 0.0), 0.25, 0.86)
 
     return OpportunityScanItem(
@@ -921,6 +942,7 @@ def _build_opening_candidate(company) -> tuple[OpeningCandidateItem | None, bool
     book_score, book_pressure, book_imbalance, book_reasons, book_risks = _order_book_pressure_component(company.ticker)
     calibration_score, calibration_reasons, calibration_risks = _opening_calibration_component(trade_calibration)
     macro_score, macro_reasons, macro_risks = _macro_event_component(company.ticker)
+    fundamental_score, fundamental_reasons, fundamental_risks = _fundamental_pressure_component(company.ticker)
     closing_strength = _closing_strength_proxy(daily_chart, intraday_1h, intraday_4h)
 
     strength_score = ((closing_strength or 45.0) - 45.0) * 0.28
@@ -933,6 +955,7 @@ def _build_opening_candidate(company) -> tuple[OpeningCandidateItem | None, bool
         + book_score
         + calibration_score
         + macro_score
+        + fundamental_score
         + strength_score,
         0.0,
         100.0,
@@ -944,8 +967,8 @@ def _build_opening_candidate(company) -> tuple[OpeningCandidateItem | None, bool
     if score < 44:
         return None, False
 
-    reasons = list(dict.fromkeys(change_reasons + volume_reasons + technical_reasons + liquidity_reasons + book_reasons + calibration_reasons + macro_reasons))[:7]
-    risks = list(dict.fromkeys(change_risks + volume_risks + technical_risks + liquidity_risks + book_risks + calibration_risks + macro_risks))[:7]
+    reasons = list(dict.fromkeys(change_reasons + volume_reasons + technical_reasons + liquidity_reasons + book_reasons + calibration_reasons + macro_reasons + fundamental_reasons))[:7]
+    risks = list(dict.fromkeys(change_risks + volume_risks + technical_risks + liquidity_risks + book_risks + calibration_risks + macro_risks + fundamental_risks))[:7]
 
     return OpeningCandidateItem(
         ticker=company.ticker,

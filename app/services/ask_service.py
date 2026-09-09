@@ -758,6 +758,15 @@ def _calculate_analysis_confidence(
     if any(impact == "negative" for impact in calibration_impacts):
         confidence -= 0.02
 
+    # Kanit sayisindan bagimsiz, sistemin gecmiste GERCEKTEN ne kadar dogru
+    # cikmis oldugunu (paper karar gunlugunden olculen win_rate) kucuk bir
+    # ayar olarak karistiriyoruz - yeterli ornek yoksa etkisiz (0.0) doner.
+    # Yerel import: system_accuracy_service -> paper_decision_log_service ->
+    # ask_service donguselligini kirmak icin.
+    from app.services.system_accuracy_service import get_confidence_adjustment
+
+    confidence += get_confidence_adjustment()
+
     return round(max(0.2, min(confidence, 0.92)), 2)
 
 

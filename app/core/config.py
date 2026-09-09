@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     scheduler_real_rate_watch_interval_minutes: int = 240
     scheduler_kap_disclosure_watch_enabled: bool = True
     scheduler_kap_disclosure_watch_interval_minutes: int = 15
+    scheduler_system_accuracy_enabled: bool = True
+    scheduler_system_accuracy_interval_minutes: int = 1440
     news_impact_provider: str = "marketaux"
     global_news_watch_enabled: bool = False
     global_news_watch_interval_minutes: int = 30
