@@ -1094,8 +1094,21 @@ def _intraday_change_component(change_percent: float | None) -> float:
 
 
 def _compute_rank_score(item: MarketScanItem, chart_summary, trade_calibration=None, ranking_mode: str = "default") -> float:
+    # ONEMLI: base (weighted_score), "technical_feature"/"signal"/"trade_calibration"
+    # kanit maddelerini zaten kategori agirligiyla (1.0/1.0/1.35) sayiyor - bu kanitlar
+    # tam olarak chart_summary/trade_calibration'in AYNI verisinden turetiliyor
+    # (bkz. _build_scan_analysis). Asagidaki bilesenler o kanitlarin gormedigi
+    # BUYUKLUK (magnitude) bilgisini eklemek icin var (orn. RSI 32 ile RSI 25
+    # kategorik olarak ayni "zayif" kanitini uretir, ama biri digerinden daha
+    # zayiftir) - sirf tie-break amacli, ana stance kararini tekrar oylamamalari
+    # icin _MAGNITUDE_SCALE ile bilerek kucuk tutuluyor. Bu olmadan (once oldugu
+    # gibi tam agirlikla eklenince) teknik sinyaller, ayni kanit hem stance'te hem
+    # siralamada iki kez sayildigi icin fundamental/macro/institutional_flow gibi
+    # diger kategorilere gore orantisiz bir siralama avantaji kazaniyordu.
+    _MAGNITUDE_SCALE = 0.25
+
     base = float(item.weighted_score)
-    calibration_component = _trade_calibration_rank_component(trade_calibration)
+    calibration_component = _trade_calibration_rank_component(trade_calibration) * _MAGNITUDE_SCALE
     if chart_summary is None:
         return round(base + (item.confidence * 0.25) + calibration_component, 3)
 
@@ -1140,8 +1153,9 @@ def _compute_rank_score(item: MarketScanItem, chart_summary, trade_calibration=N
     elif chart_summary.rsi14 < 42:
         rsi_component = -0.35
 
+    magnitude_tiebreak = (technical_component + volume_component + breakout_component + structure_component + rsi_component) * _MAGNITUDE_SCALE
     confidence_component = float(item.confidence) * 0.25
-    rank_score = base + technical_component + volume_component + breakout_component + structure_component + rsi_component + confidence_component + calibration_component
+    rank_score = base + magnitude_tiebreak + confidence_component + calibration_component
 
     if ranking_mode != "today":
         return round(rank_score, 3)
