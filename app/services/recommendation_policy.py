@@ -8,6 +8,7 @@ def derive_recommendation(evidence_items: list[AnalysisEvidence]) -> Recommendat
     net_score = positive_score - negative_score
     category_weights = {
         "signal": 1.0,
+        "news_impact": 1.1,
         "trade_level": 1.15,
         "trade_calibration": 1.35,
         "fundamental": 1.3,
