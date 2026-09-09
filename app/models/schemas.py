@@ -225,6 +225,40 @@ class OrderBookPressureResponse(BaseModel):
     message: str | None = Field(default=None, description="Availability or parsing note")
 
 
+class PreOpenImbalanceResponse(BaseModel):
+    ticker: str = Field(description="BIST ticker code", examples=["GARAN"])
+    available: bool = Field(description="Whether pre-open equilibrium data was available", examples=[True])
+    equilibrium_price: float | None = Field(default=None, description="Theoretical pre-open matching price (eqPrice)")
+    equilibrium_quantity: int | None = Field(default=None, description="Theoretical pre-open matching quantity (eqQuantity)")
+    remaining_bid_quantity: int | None = Field(default=None, description="Unmatched excess buy quantity at the equilibrium price")
+    remaining_ask_quantity: int | None = Field(default=None, description="Unmatched excess sell quantity at the equilibrium price")
+    net_imbalance_quantity: int | None = Field(default=None, description="remaining_bid_quantity minus remaining_ask_quantity")
+    imbalance_percent: float | None = Field(default=None, description="Net imbalance as a percent of equilibrium quantity")
+    pressure_bucket: str = Field(description="Pre-open pressure bucket", examples=["strong_buy_pressure"])
+    source: str = Field(description="Data source", examples=["matriks_pre_open_equilibrium"])
+    message: str | None = Field(default=None, description="Availability or parsing note")
+
+
+class PreOpenImbalanceScanItem(BaseModel):
+    ticker: str = Field(description="BIST ticker code", examples=["GARAN"])
+    company_name: str = Field(description="Company name")
+    sector: str = Field(description="Sector name")
+    equilibrium_price: float | None = Field(default=None, description="Theoretical pre-open matching price")
+    equilibrium_quantity: int | None = Field(default=None, description="Theoretical pre-open matching quantity")
+    remaining_bid_quantity: int = Field(description="Unmatched excess buy quantity at the equilibrium price")
+    remaining_ask_quantity: int = Field(description="Unmatched excess sell quantity at the equilibrium price")
+    imbalance_percent: float | None = Field(default=None, description="Net imbalance as a percent of equilibrium quantity")
+    pressure_bucket: str = Field(description="Pre-open pressure bucket", examples=["strong_buy_pressure"])
+
+
+class PreOpenImbalanceScanResponse(BaseModel):
+    generated_at: str = Field(description="Scan generation timestamp")
+    universe_size: int = Field(description="Number of companies scanned")
+    available_count: int = Field(description="Number of tickers with pre-open equilibrium data available")
+    top_buy_pressure: list[PreOpenImbalanceScanItem] = Field(description="Tickers ranked by strongest buy-side imbalance")
+    top_sell_pressure: list[PreOpenImbalanceScanItem] = Field(description="Tickers ranked by strongest sell-side imbalance")
+
+
 class OHLCVBar(BaseModel):
     timestamp: str = Field(description="Bar timestamp in ISO format", examples=["2026-04-21T10:00:00+03:00"])
     open: float = Field(description="Open price", examples=[322.5])

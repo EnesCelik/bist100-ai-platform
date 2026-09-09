@@ -599,6 +599,34 @@ def _compute_change_percent(payload: dict[str, Any], last_price: float) -> float
 
 
 
+def _extract_pre_open_equilibrium(payload: dict[str, Any]) -> dict[str, Any] | None:
+    """BIST acilis oncesi (pre-open) auksiyonunda borsanin yayinladigi teorik
+    eslesme fiyati/miktari ve eslesmeden kalan fazla alis/satis miktarini
+    cikarir. Sadece pre-open penceresinde anlamli veri doner - normal
+    seansta bu alanlar genelde 0/eksik gelir."""
+    eq_price = _pick_first_positive_float(payload, "eqPrice", "equilibriumPrice", default=0.0)
+    eq_quantity = _to_int(_pick_first(payload, "eqQuantity", "equilibriumQuantity"), default=0)
+    remaining_bid = _to_int(_pick_first(payload, "eqRemainingBidQuantity"), default=0)
+    remaining_ask = _to_int(_pick_first(payload, "eqRemainingAskQuantity"), default=0)
+
+    if eq_price <= 0 and eq_quantity <= 0 and remaining_bid <= 0 and remaining_ask <= 0:
+        return None
+
+    return {
+        "equilibrium_price": eq_price if eq_price > 0 else None,
+        "equilibrium_quantity": eq_quantity if eq_quantity > 0 else None,
+        "remaining_bid_quantity": remaining_bid,
+        "remaining_ask_quantity": remaining_ask,
+    }
+
+
+def fetch_pre_open_equilibrium(ticker: str) -> dict[str, Any] | None:
+    payload = _fetch_quote_payload(ticker)
+    if payload is None:
+        return None
+    return _extract_pre_open_equilibrium(payload)
+
+
 def _map_quote_payload(ticker: str, payload: dict[str, Any]) -> MarketDataResponse | None:
     if not payload:
         return None

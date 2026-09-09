@@ -12,6 +12,7 @@ from app.models.schemas import (
     MarketDataResponse,
     OHLCVResponse,
     OrderBookPressureResponse,
+    PreOpenImbalanceResponse,
 )
 from app.services.market_data_service import (
     bootstrap_market_data_from_browser,
@@ -24,6 +25,7 @@ from app.services.market_data_service import (
     run_market_data_cache_cleanup,
     start_market_data_garanti_sso,
 )
+from app.services.pre_open_imbalance_service import get_pre_open_imbalance
 
 
 router = APIRouter(tags=["market-data"])
@@ -81,6 +83,11 @@ def get_order_book_pressure_endpoint(
     levels: int = Query(default=10, ge=1, le=25),
 ) -> OrderBookPressureResponse:
     return fetch_order_book_pressure(ticker, levels=levels)
+
+
+@router.get("/market-data/{ticker}/pre-open-imbalance", response_model=PreOpenImbalanceResponse)
+def get_pre_open_imbalance_endpoint(ticker: str) -> PreOpenImbalanceResponse:
+    return get_pre_open_imbalance(ticker)
 
 
 @router.post("/market-data/cleanup/cache", response_model=MarketDataCleanupResponse)

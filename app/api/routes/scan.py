@@ -8,6 +8,7 @@ from app.models.schemas import (
     MarketScanResponse,
     OpeningCandidateResponse,
     OpportunityScanResponse,
+    PreOpenImbalanceScanResponse,
     PreOpenLimitUpScannerResponse,
     PreMarketWatchlistResponse,
     ScanSnapshotCreateResponse,
@@ -27,6 +28,7 @@ from app.services.market_scan_service import (
     scan_pre_open_limit_up_candidates,
     scan_pre_market_watchlist,
 )
+from app.services.pre_open_imbalance_service import scan_pre_open_imbalance
 
 
 router = APIRouter(tags=["scan"])
@@ -41,6 +43,14 @@ def get_market_scan(
     # Tarama endpoint'i bos sonuc senaryosunda 404 donmemeli.
     # Dashboard bullish/bearish gibi filtreli taramalarda bos listeyi dogal olarak gosterebilir.
     return scan_market(stance=stance, limit=limit, universe_code=universe_code)
+
+
+@router.get("/scan/pre-open-imbalance", response_model=PreOpenImbalanceScanResponse)
+def get_pre_open_imbalance_scan(
+    limit: int = Query(default=10, ge=1, le=50),
+    universe_code: str = Query(default="bist100"),
+) -> PreOpenImbalanceScanResponse:
+    return scan_pre_open_imbalance(limit=limit, universe_code=universe_code)
 
 
 @router.get("/scan/limit-up-candidates", response_model=LimitUpCandidateResponse)
