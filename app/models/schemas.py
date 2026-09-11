@@ -640,6 +640,36 @@ class PreOpenLimitUpScannerResponse(BaseModel):
     items: list[PreOpenLimitUpCandidateItem] = Field(description="Ranked pre-open limit-up candidates")
 
 
+class PreOpenScoutCandidate(BaseModel):
+    ticker: str = Field(description="BIST ticker code", examples=["EFOR"])
+    company_name: str = Field(description="Company name")
+    sector: str = Field(description="Sector name")
+    limit_up_probability_score: float = Field(description="0-100 pre-open limit-up/watch score, from the prior day's close strength and pre-open reference")
+    execution_action: str = Field(description="Actionability label from the underlying scanner", examples=["watch_preopen"])
+    previous_close: float = Field(description="Previous daily close")
+    trigger_price: float | None = Field(default=None, description="Live price level that confirms the setup after open")
+    invalidation_price: float | None = Field(default=None, description="Live price level that invalidates the setup")
+    reasons: list[str] = Field(description="Positive reasons for the ranking")
+    risks: list[str] = Field(description="Risk notes")
+
+
+class PreOpenScoutResponse(BaseModel):
+    generated_at: str = Field(description="Scan generation timestamp")
+    universe_size: int = Field(description="Number of unique tickers scanned")
+    total: int = Field(description="Number of scouted candidates (watch_preopen action, above min_score)")
+    items: list[PreOpenScoutCandidate] = Field(description="Leading pre-open candidates worth confirming after open")
+
+
+class PreOpenScoutConfirmationItem(BaseModel):
+    ticker: str = Field(description="BIST ticker code")
+    status: str = Field(description="Confirmation outcome", examples=["confirmed", "invalidated", "pending"])
+    live_price: float | None = Field(default=None, description="Live price observed at confirmation time")
+    trigger_price: float | None = Field(default=None, description="Trigger level that was checked")
+    invalidation_price: float | None = Field(default=None, description="Invalidation level that was checked")
+    capital_allocated: float | None = Field(default=None, description="Capital allocated if confirmed and opened")
+    reason: str = Field(description="Why this status was assigned")
+
+
 class IntradayUpsideCandidateItem(BaseModel):
     ticker: str = Field(description="BIST ticker code", examples=["ASTOR"])
     company_name: str = Field(description="Company name")
@@ -1326,6 +1356,15 @@ class PaperTradeOpenResponse(BaseModel):
     tickers: list[str] = Field(description="Newly opened tickers", examples=[["MGROS", "BIMAS"]])
     items: list[PaperTradeItem] = Field(description="Newly opened trades")
     halted_reason: str | None = Field(default=None, description="If set, no trades were opened because trading is halted (kill-switch or circuit breaker)")
+
+
+class PreOpenScoutConfirmResponse(BaseModel):
+    generated_at: str = Field(description="Confirmation run timestamp")
+    strategy_name: str = Field(description="Paper trade strategy name positions were opened under")
+    checked_count: int = Field(description="Number of scouted candidates checked")
+    confirmed_count: int = Field(description="Number of candidates confirmed and opened")
+    items: list[PreOpenScoutConfirmationItem] = Field(description="Per-candidate confirmation outcome")
+    opened: PaperTradeOpenResponse | None = Field(default=None, description="Result of opening the confirmed positions, if any were confirmed")
 
 
 class PaperTradeMonitorResponse(BaseModel):

@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Query
 
 from app.models.schemas import (
+    PreOpenScoutConfirmResponse,
+    PreOpenScoutResponse,
     TradingAgentCycleResponse,
     TradingAgentLearningReportResponse,
     TradingAgentLearningWeightsResponse,
@@ -14,6 +16,7 @@ from app.models.schemas import (
 )
 from app.services.trading_agent_decision_service import build_agent_learning_report
 from app.services.market_scan_service import scan_opening_candidates
+from app.services.pre_open_scouting_service import confirm_and_open_scouted_candidates, scout_pre_open_candidates
 from app.services.trading_agent_learning_weights_service import build_next_session_weight_adjustments
 from app.services.trading_agent_replay_service import evaluate_agent_candidate_replay
 from app.services.trading_agent_signal_service import detect_regime_from_opening_candidates, score_opening_candidate
@@ -29,6 +32,34 @@ from app.services.trading_agent_service import (
 )
 
 router = APIRouter(tags=["trading-agent"])
+
+
+@router.post("/agent/trading/pre-open-scout", response_model=PreOpenScoutResponse)
+def scout_trading_agent_pre_open_candidates(
+    limit: int = Query(default=10, ge=1, le=30),
+    universe_code: str = Query(default="bist100"),
+    min_score: float = Query(default=55.0, ge=0.0, le=100.0),
+) -> PreOpenScoutResponse:
+    return scout_pre_open_candidates(limit=limit, universe_code=universe_code, min_score=min_score)
+
+
+@router.post("/agent/trading/pre-open-confirm-and-open", response_model=PreOpenScoutConfirmResponse)
+def confirm_and_open_trading_agent_pre_open_candidates(
+    strategy_name: str = Query(...),
+    limit: int = Query(default=10, ge=1, le=30),
+    universe_code: str = Query(default="bist100"),
+    min_score: float = Query(default=55.0, ge=0.0, le=100.0),
+    total_capital: float = Query(default=100000.0, gt=0),
+    cash_buffer: float = Query(default=10000.0, ge=0),
+) -> PreOpenScoutConfirmResponse:
+    return confirm_and_open_scouted_candidates(
+        strategy_name=strategy_name,
+        limit=limit,
+        universe_code=universe_code,
+        min_score=min_score,
+        total_capital=total_capital,
+        cash_buffer=cash_buffer,
+    )
 
 
 @router.post("/agent/trading/opening-plan", response_model=TradingAgentCycleResponse)
