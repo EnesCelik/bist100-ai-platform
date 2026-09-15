@@ -157,9 +157,13 @@ class Settings(BaseSettings):
     matriks_verify_ssl: bool = True
 
     # MarketDataToken otomatik yenileme scheduler'i.
+    # buffer_minutes=0: token hala gecerliyken hic SSO istemi/Telegram bildirimi
+    # gonderme - sadece gercekten suresi dolduktan sonra iste. Eskiden 45 dk idi;
+    # bu da hala calisan bir token icin ~45 dk boyunca gereksiz "onayla" mesaji
+    # anlamina geliyordu (kullanici bunu fark edip sikayet etti, 2026-09-15).
     scheduler_token_refresh_enabled: bool = True
     scheduler_token_refresh_interval_minutes: int = 5
-    scheduler_token_refresh_buffer_minutes: int = 45
+    scheduler_token_refresh_buffer_minutes: int = 0
 
     # Matriks terminal DDE bridge ayarlari.
     matriks_dde_bridge_base_url: str = "http://127.0.0.1:8765"
