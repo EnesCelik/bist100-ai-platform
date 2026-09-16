@@ -435,8 +435,29 @@ async def _run_with_timeout(func, job_name: str, timeout_seconds: float = _JOB_H
         )
 
 
+_TOKEN_REFRESH_QUIET_HOUR_START = 19  # 19:00 TR
+_TOKEN_REFRESH_QUIET_HOUR_END = 8  # 08:00 TR - bu saatten sonra tekrar denenir
+
+
+def _is_within_token_refresh_quiet_hours(now: datetime | None = None) -> bool:
+    current = now.astimezone(ZoneInfo("Europe/Istanbul")) if now is not None else datetime.now(ZoneInfo("Europe/Istanbul"))
+    hour = current.hour
+    # Gece yarisini saran bir aralik (19:00 -> 08:00): baslangic bitisten
+    # buyuk oldugu icin "veya" mantigiyla kontrol ediliyor.
+    return hour >= _TOKEN_REFRESH_QUIET_HOUR_START or hour < _TOKEN_REFRESH_QUIET_HOUR_END
+
+
 def _run_token_refresh_once() -> None:
     from app.services.matriks_token_refresh_service import refresh_market_data_token_if_needed
+
+    if _is_within_token_refresh_quiet_hours():
+        # Piyasa kapaliyken (19:00-08:00 TR) kullaniciyi mobil onay icin
+        # rahatsiz etmiyoruz - zaten bu saatlerde canli veriye ihtiyac yok,
+        # 08:00'den sonra normal akis devam eder (bir sonraki pre-open
+        # taramasindan once tazelenmeye yetecek kadar zaman birakir).
+        _runtime_state.last_token_refresh_status = "skipped_quiet_hours"
+        _runtime_state.last_token_refresh_message = "Sessiz saatler (19:00-08:00 TR); yenileme denenmedi."
+        return
 
     _runtime_state.last_token_refresh_started_at = _utc_now_iso()
     _runtime_state.last_token_refresh_status = "running"
