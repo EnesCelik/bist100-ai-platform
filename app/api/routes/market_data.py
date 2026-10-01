@@ -27,7 +27,7 @@ from app.services.market_data_service import (
     start_market_data_garanti_sso,
 )
 from app.services.pre_open_imbalance_service import get_pre_open_imbalance
-from app.services.us_market_service import get_us_stock_quote
+from app.services.us_market_service import get_us_stock_quote, get_us_watchlist_quotes
 
 
 router = APIRouter(tags=["market-data"])
@@ -39,6 +39,11 @@ def get_market_data_provider_health(
     timeframe: str = Query(default="1G"),
 ) -> MarketDataProviderHealthResponse:
     return fetch_market_data_provider_health(ticker=ticker, timeframe=timeframe)
+
+
+@router.get("/market-data/us/watchlist", response_model=list[USStockQuoteResponse])
+def get_us_market_watchlist() -> list[USStockQuoteResponse]:
+    return get_us_watchlist_quotes()
 
 
 @router.get("/market-data/us/{ticker}", response_model=USStockQuoteResponse)

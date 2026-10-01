@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     fmp_api_key: str = ""
     fmp_base_url: str = "https://financialmodelingprep.com/stable"
     fmp_timeout_seconds: float = 8.0
+    us_watchlist_tickers: list[str] = [
+        "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "AVGO",
+        "SPY", "QQQ",
+        "JPM", "JNJ", "KO", "XOM",
+    ]
     eodhd_api_token: str = ""
     eodhd_base_url: str = "https://eodhd.com/api"
     eodhd_timeout_seconds: float = 8.0

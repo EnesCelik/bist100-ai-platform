@@ -4,6 +4,7 @@ servislerindeki "available=False + mesaj" deseni ABD hisseleri icin de
 tutarli kaliyor."""
 from __future__ import annotations
 
+from app.core.config import settings
 from app.data_sources.market_data.fmp_us_provider import fetch_us_quote
 from app.models.schemas import USStockQuoteResponse
 
@@ -39,3 +40,7 @@ def get_us_stock_quote(ticker: str) -> USStockQuoteResponse:
         source=US_QUOTE_SOURCE_NAME,
         message=None,
     )
+
+
+def get_us_watchlist_quotes() -> list[USStockQuoteResponse]:
+    return [get_us_stock_quote(ticker) for ticker in settings.us_watchlist_tickers]
