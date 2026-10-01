@@ -208,6 +208,26 @@ class MarketDataResponse(BaseModel):
     source: str = Field(description="Data source name", examples=["mock_market_data_tool"])
 
 
+class USStockQuoteResponse(BaseModel):
+    ticker: str = Field(description="US ticker symbol", examples=["AAPL"])
+    available: bool = Field(description="Whether a quote was found")
+    company_name: str | None = Field(default=None, description="Company name")
+    exchange: str | None = Field(default=None, description="Listing exchange", examples=["NASDAQ"])
+    last_price: float | None = Field(default=None, description="Latest traded price")
+    change_percent: float | None = Field(default=None, description="Daily percentage change")
+    change: float | None = Field(default=None, description="Daily absolute change")
+    volume: int | None = Field(default=None, description="Daily traded volume")
+    day_low: float | None = Field(default=None, description="Daily low")
+    day_high: float | None = Field(default=None, description="Daily high")
+    year_low: float | None = Field(default=None, description="52-week low")
+    year_high: float | None = Field(default=None, description="52-week high")
+    previous_close: float | None = Field(default=None, description="Previous close")
+    open: float | None = Field(default=None, description="Daily open")
+    market_cap: float | None = Field(default=None, description="Market capitalization")
+    source: str = Field(description="Data source name", examples=["fmp_quote"])
+    message: str | None = Field(default=None, description="Explanation when unavailable")
+
+
 class OrderBookLevel(BaseModel):
     price: float = Field(description="Order book level price", examples=[128.4])
     quantity: int = Field(description="Order book level quantity", examples=[125000])

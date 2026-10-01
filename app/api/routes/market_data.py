@@ -13,6 +13,7 @@ from app.models.schemas import (
     OHLCVResponse,
     OrderBookPressureResponse,
     PreOpenImbalanceResponse,
+    USStockQuoteResponse,
 )
 from app.services.market_data_service import (
     bootstrap_market_data_from_browser,
@@ -26,6 +27,7 @@ from app.services.market_data_service import (
     start_market_data_garanti_sso,
 )
 from app.services.pre_open_imbalance_service import get_pre_open_imbalance
+from app.services.us_market_service import get_us_stock_quote
 
 
 router = APIRouter(tags=["market-data"])
@@ -37,6 +39,11 @@ def get_market_data_provider_health(
     timeframe: str = Query(default="1G"),
 ) -> MarketDataProviderHealthResponse:
     return fetch_market_data_provider_health(ticker=ticker, timeframe=timeframe)
+
+
+@router.get("/market-data/us/{ticker}", response_model=USStockQuoteResponse)
+def get_us_market_data(ticker: str) -> USStockQuoteResponse:
+    return get_us_stock_quote(ticker)
 
 
 @router.get("/market-data/{ticker}", response_model=MarketDataResponse)
