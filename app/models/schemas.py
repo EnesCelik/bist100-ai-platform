@@ -346,6 +346,11 @@ class MarketDataProviderHealthResponse(BaseModel):
     notes: list[str] = Field(description="Human-readable health notes")
 
 
+class TokenRefreshToggleResponse(BaseModel):
+    enabled: bool = Field(description="Whether the background Matriks token-refresh scheduler job is enabled")
+    message: str = Field(description="Human-readable confirmation of the new state")
+
+
 class GarantiSsoStartResponse(BaseModel):
     status: str = Field(description="SSO bootstrap status", examples=["pending_approval"])
     client_state: str = Field(description="Generated Garanti SSO client_state value")

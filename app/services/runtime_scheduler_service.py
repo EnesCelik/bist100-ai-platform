@@ -447,6 +447,22 @@ def _is_within_token_refresh_quiet_hours(now: datetime | None = None) -> bool:
     return hour >= _TOKEN_REFRESH_QUIET_HOUR_START or hour < _TOKEN_REFRESH_QUIET_HOUR_END
 
 
+def set_token_refresh_enabled(enabled: bool) -> "TokenRefreshToggleResponse":
+    from app.models.schemas import TokenRefreshToggleResponse
+
+    # Statik bir .env degeri degil, calisan surecin settings nesnesini
+    # dogrudan mutate ediyoruz - bir sonraki scheduler dongusu (en fazla
+    # scheduler_token_refresh_interval_minutes sonra) bunu hemen gorur,
+    # sunucu yeniden baslatmaya (ve mevcut token'i kaybetmeye) gerek yok.
+    settings.scheduler_token_refresh_enabled = enabled
+    message = (
+        "Matriks token otomatik yenileme devre disi birakildi - arka plan artik SSO denemesi/Telegram istemi gondermeyecek."
+        if not enabled
+        else "Matriks token otomatik yenileme tekrar etkinlestirildi."
+    )
+    return TokenRefreshToggleResponse(enabled=enabled, message=message)
+
+
 def _run_token_refresh_once() -> None:
     from app.services.matriks_token_refresh_service import refresh_market_data_token_if_needed
 

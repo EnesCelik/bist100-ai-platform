@@ -13,8 +13,10 @@ from app.models.schemas import (
     OHLCVResponse,
     OrderBookPressureResponse,
     PreOpenImbalanceResponse,
+    TokenRefreshToggleResponse,
     USStockQuoteResponse,
 )
+from app.services.runtime_scheduler_service import set_token_refresh_enabled
 from app.services.market_data_service import (
     bootstrap_market_data_from_browser,
     complete_market_data_garanti_sso,
@@ -39,6 +41,11 @@ def get_market_data_provider_health(
     timeframe: str = Query(default="1G"),
 ) -> MarketDataProviderHealthResponse:
     return fetch_market_data_provider_health(ticker=ticker, timeframe=timeframe)
+
+
+@router.post("/market-data/auth/garanti/token-refresh/toggle", response_model=TokenRefreshToggleResponse)
+def toggle_garanti_token_refresh(enabled: bool = Query(...)) -> TokenRefreshToggleResponse:
+    return set_token_refresh_enabled(enabled)
 
 
 @router.get("/market-data/us/watchlist", response_model=list[USStockQuoteResponse])
